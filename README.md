@@ -1,7 +1,7 @@
 # 📚 Library Management System - Frontend (Week 1)
 
-> **Periode:** Week 1 (Day 1-5)  
-> **Tim Frontend:** Andhika & Bagas  
+> **Periode:** Week 1 (Day 3)  
+> **Tim Frontend:** Bagas  
 > **Status:** ✅ Static Layout & Foundation Complete
 
 ---
@@ -702,11 +702,9 @@ const sampleOverdue = [
 
 | Peran | Nama | Kontak |
 | :--- | :--- | :--- |
-| **Frontend Lead** | Andhika | [GitHub](#) |
 | **Frontend Developer** | Bagas | [GitHub](#) |
-| **Backend Lead** | [Nama] | [GitHub](#) |
-| **Mobile Lead** | Alfa | [GitHub](#) |
-| **UI/UX Designer** | [Nama] | [Figma](#) |
+| **Backend Lead** | jibal | [GitHub](#) |
+| **UI/UX Designer** | agung | [Figma](#) |
 
 ---
 
