@@ -27,13 +27,13 @@ export default function LoginPage() {
     setError(null);
     login(data, {
       onSuccess: () => {
-        navigate('/catalog'); // atau '/'
+        navigate('/catalog', { replace: true });
       },
       onError: (error) => {
         if (error instanceof AxiosError) {
-          setError(error.response?.data?.message || 'Login failed. Please try again.');
+          setError(error.response?.data?.message || 'Login gagal. Silakan coba lagi.');
         } else {
-          setError('An unexpected error occurred.');
+          setError('Terjadi kesalahan saat login.');
         }
       },
     });
@@ -65,7 +65,7 @@ export default function LoginPage() {
             </Button>
           </form>
           <div className="mt-4 text-center text-sm">
-            Don't have an account?{' '}
+            Belum punya akun?{' '}
             <Link to="/register" className="text-blue-600 hover:underline">
               Register
             </Link>

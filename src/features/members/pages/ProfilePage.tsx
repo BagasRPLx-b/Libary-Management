@@ -2,30 +2,36 @@ import { useAuth } from '@/context/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Skeleton } from '@/components/ui/skeleton';
 import { User, Mail, Phone, Clock, AlertCircle, CheckCircle } from 'lucide-react';
-import { format } from 'date-fns';
-
-// Sample data peminjaman
-const ACTIVE_LOANS = [
-  { id: 1, book: 'The Great Gatsby', borrowDate: new Date('2025-03-01'), dueDate: new Date('2025-03-15'), status: 'active' },
-  { id: 2, book: '1984', borrowDate: new Date('2025-02-20'), dueDate: new Date('2025-03-06'), status: 'overdue' },
-];
-
-const LOAN_HISTORY = [
-  { id: 3, book: 'Pride and Prejudice', borrowDate: new Date('2025-01-10'), returnDate: new Date('2025-01-24'), status: 'returned' },
-  { id: 4, book: 'Hamlet', borrowDate: new Date('2024-12-05'), returnDate: new Date('2024-12-19'), status: 'returned' },
-  { id: 5, book: 'Moby Dick', borrowDate: new Date('2024-11-15'), returnDate: new Date('2024-11-29'), status: 'returned' },
-];
+import { format, parseISO } from 'date-fns';
+import { useProfile, useMyActiveLoans, useMyLoanHistory } from '../hooks/useProfile';
 
 export default function ProfilePage() {
   const { user } = useAuth();
+  const { data: profile, isLoading: isLoadingProfile } = useProfile();
+  const { data: activeLoans = [], isLoading: isLoadingActive } = useMyActiveLoans();
+  const { data: loanHistory = [], isLoading: isLoadingHistory } = useMyLoanHistory();
 
-  const totalFine = ACTIVE_LOANS
-    .filter(loan => loan.status === 'overdue')
-    .reduce((sum, loan) => {
-      const daysOverdue = Math.ceil((new Date().getTime() - loan.dueDate.getTime()) / (1000 * 60 * 60 * 24));
-      return sum + (daysOverdue * 1000); // 1000 per hari
-    }, 0);
+  const currentProfile = profile || user;
+
+  const totalFine = activeLoans.reduce((sum, loan) => {
+    if (loan.fine_amount) return sum + loan.fine_amount;
+    if (loan.status === 'overdue' && loan.due_date) {
+      const daysOverdue = Math.ceil((new Date().getTime() - new Date(loan.due_date).getTime()) / (1000 * 60 * 60 * 24));
+      return sum + Math.max(0, daysOverdue * 1000);
+    }
+    return sum;
+  }, 0);
+
+  const formatDateString = (dateStr?: string) => {
+    if (!dateStr) return '-';
+    try {
+      return format(parseISO(dateStr), 'dd MMM yyyy');
+    } catch {
+      return dateStr;
+    }
+  };
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -40,21 +46,21 @@ export default function ProfilePage() {
               <User className="h-5 w-5 text-gray-400" />
               <div>
                 <p className="text-sm text-gray-500">Nama</p>
-                <p className="font-medium">{user?.name || '-'}</p>
+                {isLoadingProfile ? <Skeleton className="h-5 w-32 mt-1" /> : <p className="font-medium">{currentProfile?.name || '-'}</p>}
               </div>
             </div>
             <div className="flex items-center gap-3">
               <Mail className="h-5 w-5 text-gray-400" />
               <div>
                 <p className="text-sm text-gray-500">Email</p>
-                <p className="font-medium">{user?.email || '-'}</p>
+                {isLoadingProfile ? <Skeleton className="h-5 w-40 mt-1" /> : <p className="font-medium">{currentProfile?.email || '-'}</p>}
               </div>
             </div>
             <div className="flex items-center gap-3">
               <Phone className="h-5 w-5 text-gray-400" />
               <div>
                 <p className="text-sm text-gray-500">Phone</p>
-                <p className="font-medium">081234567890</p>
+                {isLoadingProfile ? <Skeleton className="h-5 w-28 mt-1" /> : <p className="font-medium">{currentProfile?.phone || '-'}</p>}
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -100,24 +106,34 @@ export default function ProfilePage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {ACTIVE_LOANS.map((loan) => (
-                <TableRow key={loan.id}>
-                  <TableCell className="font-medium">{loan.book}</TableCell>
-                  <TableCell>{format(loan.borrowDate, 'dd MMM yyyy')}</TableCell>
-                  <TableCell>{format(loan.dueDate, 'dd MMM yyyy')}</TableCell>
-                  <TableCell>
-                    <Badge variant={loan.status === 'overdue' ? 'destructive' : 'default'}>
-                      {loan.status === 'overdue' ? 'Terlambat' : 'Aktif'}
-                    </Badge>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {ACTIVE_LOANS.length === 0 && (
+              {isLoadingActive ? (
+                Array.from({ length: 3 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                  </TableRow>
+                ))
+              ) : activeLoans.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={4} className="text-center text-gray-500 py-4">
                     Tidak ada peminjaman aktif.
                   </TableCell>
                 </TableRow>
+              ) : (
+                activeLoans.map((loan) => (
+                  <TableRow key={loan.id}>
+                    <TableCell className="font-medium">{loan.book?.title || 'Unknown Title'}</TableCell>
+                    <TableCell>{formatDateString(loan.borrow_date)}</TableCell>
+                    <TableCell>{formatDateString(loan.due_date)}</TableCell>
+                    <TableCell>
+                      <Badge variant={loan.status === 'overdue' ? 'destructive' : 'default'}>
+                        {loan.status === 'overdue' ? 'Terlambat' : 'Aktif'}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))
               )}
             </TableBody>
           </Table>
@@ -143,22 +159,32 @@ export default function ProfilePage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {LOAN_HISTORY.map((loan) => (
-                <TableRow key={loan.id}>
-                  <TableCell className="font-medium">{loan.book}</TableCell>
-                  <TableCell>{format(loan.borrowDate, 'dd MMM yyyy')}</TableCell>
-                  <TableCell>{loan.returnDate ? format(loan.returnDate, 'dd MMM yyyy') : '-'}</TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">Dikembalikan</Badge>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {LOAN_HISTORY.length === 0 && (
+              {isLoadingHistory ? (
+                Array.from({ length: 3 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                  </TableRow>
+                ))
+              ) : loanHistory.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={4} className="text-center text-gray-500 py-4">
                     Belum ada riwayat peminjaman.
                   </TableCell>
                 </TableRow>
+              ) : (
+                loanHistory.map((loan) => (
+                  <TableRow key={loan.id}>
+                    <TableCell className="font-medium">{loan.book?.title || 'Unknown Title'}</TableCell>
+                    <TableCell>{formatDateString(loan.borrow_date)}</TableCell>
+                    <TableCell>{formatDateString(loan.return_date)}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">Dikembalikan</Badge>
+                    </TableCell>
+                  </TableRow>
+                ))
               )}
             </TableBody>
           </Table>

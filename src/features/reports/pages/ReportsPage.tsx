@@ -3,27 +3,25 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { format } from 'date-fns';
+import { Skeleton } from '@/components/ui/skeleton';
+import { format, parseISO } from 'date-fns';
 import { Search } from 'lucide-react';
-
-const OVERDUE_LOANS = [
-  { id: 1, member: 'John Doe', book: 'The Great Gatsby', dueDate: new Date('2025-03-15'), fineAmount: 2500 },
-  { id: 2, member: 'Jane Smith', book: '1984', dueDate: new Date('2025-03-10'), fineAmount: 5000 },
-  { id: 3, member: 'Robert Brown', book: 'To Kill a Mockingbird', dueDate: new Date('2025-03-20'), fineAmount: 1200 },
-  { id: 4, member: 'Emily Davis', book: 'Pride and Prejudice', dueDate: new Date('2025-03-18'), fineAmount: 1800 },
-  { id: 5, member: 'Michael Wilson', book: 'Moby Dick', dueDate: new Date('2025-03-22'), fineAmount: 3000 },
-];
+import { useOverdueLoans } from '../hooks/useReports';
 
 export default function ReportsPage() {
   const [searchTerm, setSearchTerm] = useState('');
+  const { data: overdueLoans = [], isLoading } = useOverdueLoans(searchTerm);
 
-  const filteredLoans = OVERDUE_LOANS.filter(
-    (loan) =>
-      loan.member.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      loan.book.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const totalFine = overdueLoans.reduce((sum, loan) => sum + (loan.fine_amount || 0), 0);
 
-  const totalFine = filteredLoans.reduce((sum, loan) => sum + loan.fineAmount, 0);
+  const formatDate = (dateStr?: string) => {
+    if (!dateStr) return '-';
+    try {
+      return format(parseISO(dateStr), 'dd MMM yyyy');
+    } catch {
+      return dateStr;
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -54,25 +52,36 @@ export default function ReportsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredLoans.map((loan) => (
-                <TableRow key={loan.id}>
-                  <TableCell className="font-medium">{loan.member}</TableCell>
-                  <TableCell>{loan.book}</TableCell>
-                  <TableCell>{format(loan.dueDate, 'dd MMM yyyy')}</TableCell>
-                  <TableCell>
-                    <Badge variant="destructive">Overdue</Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    Rp {loan.fineAmount.toLocaleString('id-ID')}
-                  </TableCell>
-                </TableRow>
-              ))}
-              {filteredLoans.length === 0 && (
+              {isLoading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-36" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                    <TableCell className="text-right"><Skeleton className="h-4 w-20 ml-auto" /></TableCell>
+                  </TableRow>
+                ))
+              ) : overdueLoans.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center text-gray-500 py-8">
                     No overdue loans found.
                   </TableCell>
                 </TableRow>
+              ) : (
+                overdueLoans.map((loan) => (
+                  <TableRow key={loan.id}>
+                    <TableCell className="font-medium">{loan.member}</TableCell>
+                    <TableCell>{loan.book}</TableCell>
+                    <TableCell>{formatDate(loan.due_date)}</TableCell>
+                    <TableCell>
+                      <Badge variant="destructive">Overdue</Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      Rp {(loan.fine_amount || 0).toLocaleString('id-ID')}
+                    </TableCell>
+                  </TableRow>
+                ))
               )}
             </TableBody>
           </Table>

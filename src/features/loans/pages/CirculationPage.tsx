@@ -4,46 +4,71 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Barcode, ArrowRightLeft, Undo2, Book } from 'lucide-react';
-
-const SAMPLE_BOOK = {
-  id: 1,
-  title: 'The Great Gatsby',
-  author: 'F. Scott Fitzgerald',
-  isbn: '978-0743273565',
-  status: 'Available',
-};
-
-const TODAY_TRANSACTIONS = [
-  { id: 1, member: 'John Doe', book: 'The Great Gatsby', type: 'Issue', time: '09:15 AM' },
-  { id: 2, member: 'Jane Smith', book: '1984', type: 'Return', time: '10:22 AM' },
-  { id: 3, member: 'Robert Brown', book: 'To Kill a Mockingbird', type: 'Issue', time: '11:05 AM' },
-  { id: 4, member: 'Emily Davis', book: 'Pride and Prejudice', type: 'Issue', time: '01:30 PM' },
-  { id: 5, member: 'Michael Wilson', book: 'Moby Dick', type: 'Return', time: '02:45 PM' },
-];
+import { Skeleton } from '@/components/ui/skeleton';
+import { Barcode, ArrowRightLeft, Undo2, Book as BookIcon } from 'lucide-react';
+import { useTodayTransactions, useIssueBook, useReturnBook } from '../hooks/useCirculation';
+import apiClient from '@/lib/api/client';
+import type { Book } from '@/features/books/hooks/useBooks';
 
 export default function CirculationPage() {
   const [barcode, setBarcode] = useState('');
   const [mode, setMode] = useState<'issue' | 'return'>('issue');
-  const [scannedBook, setScannedBook] = useState<typeof SAMPLE_BOOK | null>(null);
+  const [scannedBook, setScannedBook] = useState<Book | null>(null);
+  const [isScanning, setIsScanning] = useState(false);
   const [alert, setAlert] = useState<string | null>(null);
 
-  const handleScan = () => {
+  const { data: todayTransactions = [], isLoading: isLoadingTx } = useTodayTransactions();
+  const { mutate: issueBook, isPending: isIssuing } = useIssueBook();
+  const { mutate: returnBook, isPending: isReturning } = useReturnBook();
+
+  const handleScan = async () => {
     if (!barcode.trim()) return;
-    setScannedBook(SAMPLE_BOOK);
-    setAlert(`Buku ditemukan: ${SAMPLE_BOOK.title} (${SAMPLE_BOOK.status})`);
+    setIsScanning(true);
+    setAlert(null);
+    try {
+      const response = await apiClient.get(`/books/scan/${barcode.trim()}`);
+      const bookData = response.data?.data || response.data;
+      setScannedBook(bookData);
+      setAlert(`Buku ditemukan: ${bookData.title}`);
+    } catch (error: any) {
+      setScannedBook(null);
+      setAlert(error.response?.data?.message || 'Buku tidak ditemukan.');
+    } finally {
+      setIsScanning(false);
+    }
   };
 
   const handleAction = () => {
     if (!scannedBook) return;
     if (mode === 'issue') {
-      setAlert(`Buku "${scannedBook.title}" berhasil dipinjamkan.`);
+      issueBook(
+        { book_id: scannedBook.id },
+        {
+          onSuccess: () => {
+            setAlert(`Buku "${scannedBook.title}" berhasil dipinjamkan.`);
+            setScannedBook(null);
+            setBarcode('');
+          },
+          onError: (error: any) => {
+            setAlert(error.response?.data?.message || 'Gagal memproses peminjaman.');
+          },
+        }
+      );
     } else {
-      setAlert(`Buku "${scannedBook.title}" berhasil dikembalikan.`);
+      returnBook(
+        { book_id: scannedBook.id },
+        {
+          onSuccess: () => {
+            setAlert(`Buku "${scannedBook.title}" berhasil dikembalikan.`);
+            setScannedBook(null);
+            setBarcode('');
+          },
+          onError: (error: any) => {
+            setAlert(error.response?.data?.message || 'Gagal memproses pengembalian.');
+          },
+        }
+      );
     }
-    setScannedBook(null);
-    setBarcode('');
-    setTimeout(() => setAlert(null), 3000);
   };
 
   return (
@@ -84,20 +109,20 @@ export default function CirculationPage() {
             <Barcode className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
           </div>
 
-          <Button className="w-full" size="lg" onClick={handleScan}>
-            Cari Buku
+          <Button className="w-full" size="lg" onClick={handleScan} disabled={isScanning}>
+            {isScanning ? 'Mencari...' : 'Cari Buku'}
           </Button>
 
           {scannedBook && (
             <Card className="mt-4 border-dashed">
               <CardContent className="pt-4 flex items-start gap-4">
-                <Book className="h-10 w-10 text-blue-600 mt-1" />
+                <BookIcon className="h-10 w-10 text-blue-600 mt-1" />
                 <div>
                   <p className="font-medium text-lg">{scannedBook.title}</p>
                   <p className="text-sm text-gray-600">by {scannedBook.author}</p>
-                  <p className="text-sm text-gray-500">ISBN: {scannedBook.isbn}</p>
-                  <Badge variant={scannedBook.status === 'Available' ? 'default' : 'secondary'} className="mt-1">
-                    {scannedBook.status}
+                  <p className="text-sm text-gray-500">ISBN: {scannedBook.isbn || '-'}</p>
+                  <Badge variant={scannedBook.available_copies > 0 ? 'default' : 'secondary'} className="mt-1">
+                    {scannedBook.available_copies > 0 ? `${scannedBook.available_copies} Tersedia` : 'Tidak Tersedia'}
                   </Badge>
                 </div>
               </CardContent>
@@ -109,8 +134,13 @@ export default function CirculationPage() {
               className="w-full"
               variant={mode === 'return' ? 'destructive' : 'default'}
               onClick={handleAction}
+              disabled={isIssuing || isReturning}
             >
-              {mode === 'issue' ? 'Konfirmasi Issue' : 'Konfirmasi Return'}
+              {isIssuing || isReturning
+                ? 'Memproses...'
+                : mode === 'issue'
+                ? 'Konfirmasi Issue'
+                : 'Konfirmasi Return'}
             </Button>
           )}
 
@@ -136,16 +166,33 @@ export default function CirculationPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {TODAY_TRANSACTIONS.map((tx) => (
-                <TableRow key={tx.id}>
-                  <TableCell className="font-medium">{tx.member}</TableCell>
-                  <TableCell>{tx.book}</TableCell>
-                  <TableCell>
-                    <Badge variant={tx.type === 'Issue' ? 'default' : 'secondary'}>{tx.type}</Badge>
+              {isLoadingTx ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                  </TableRow>
+                ))
+              ) : todayTransactions.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center text-gray-500 py-8">
+                    Belum ada transaksi hari ini.
                   </TableCell>
-                  <TableCell>{tx.time}</TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                todayTransactions.map((tx) => (
+                  <TableRow key={tx.id}>
+                    <TableCell className="font-medium">{tx.member}</TableCell>
+                    <TableCell>{tx.book}</TableCell>
+                    <TableCell>
+                      <Badge variant={tx.type === 'Issue' ? 'default' : 'secondary'}>{tx.type}</Badge>
+                    </TableCell>
+                    <TableCell>{tx.time}</TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </CardContent>

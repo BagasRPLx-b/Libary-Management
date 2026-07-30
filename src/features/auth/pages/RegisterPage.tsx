@@ -29,13 +29,13 @@ export default function RegisterPage() {
     registerUser(data, {
       onSuccess: () => {
         setSuccess(true);
-        setTimeout(() => navigate('/login'), 2000);
+        setTimeout(() => navigate('/login'), 1500);
       },
       onError: (error) => {
         if (error instanceof AxiosError) {
-          setError(error.response?.data?.message || 'Registration failed.');
+          setError(error.response?.data?.message || 'Registrasi gagal. Silakan periksa kembali data Anda.');
         } else {
-          setError('An unexpected error occurred.');
+          setError('Terjadi kesalahan yang tidak terduga.');
         }
       },
     });
