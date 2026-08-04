@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ArrowLeft, BookOpen, Bookmark, Calendar, Hash, Building, Globe } from 'lucide-react';
+import { ArrowLeft, BookOpen, Bookmark, Calendar, Hash, Building, Globe, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { useBook } from '../hooks/useBooks';
 import { useIssueBook } from '@/features/loans/hooks/useCirculation';
@@ -16,7 +16,7 @@ export default function BookDetailPage() {
   const { user } = useAuth();
   const [alert, setAlert] = useState<string | null>(null);
 
-  const { data: book, isLoading } = useBook(Number(id));
+  const { data: book, isLoading, isError, refetch } = useBook(Number(id));
   const { mutate: issueBook, isPending: isIssuing } = useIssueBook();
   const isMember = user?.role === 'Member';
 
@@ -47,6 +47,19 @@ export default function BookDetailPage() {
           </div>
           <Skeleton className="h-48" />
         </div>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="max-w-4xl mx-auto space-y-6">
+        <Alert variant="destructive">
+          <AlertDescription className="flex items-center justify-between">
+            <span>Gagal memuat detail buku.</span>
+            <Button variant="outline" size="sm" onClick={() => refetch()}>Coba Lagi</Button>
+          </AlertDescription>
+        </Alert>
       </div>
     );
   }
@@ -138,7 +151,7 @@ export default function BookDetailPage() {
               <div className="flex items-center gap-2 text-sm">
                 <Bookmark className="h-4 w-4 text-gray-400" />
                 <span className="text-gray-600">Kategori:</span>
-                <span className="font-medium">{book.category}</span>
+                <span className="font-medium">{typeof book.category === 'string' ? book.category : book.category?.name ?? '-'}</span>
               </div>
             </div>
 
@@ -150,7 +163,16 @@ export default function BookDetailPage() {
                   disabled={book.available_copies === 0 || isIssuing}
                   onClick={handleBorrow}
                 >
-                  {isIssuing ? 'Memproses...' : book.available_copies > 0 ? 'Pinjam Buku' : 'Tidak Tersedia'}
+                  {isIssuing ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Memproses...
+                    </>
+                  ) : book.available_copies > 0 ? (
+                    'Pinjam Buku'
+                  ) : (
+                    'Tidak Tersedia'
+                  )}
                 </Button>
               </div>
             )}

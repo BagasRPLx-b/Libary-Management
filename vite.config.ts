@@ -13,4 +13,16 @@ export default defineConfig({
       '@': path.resolve(__dirname, 'src'),
     },
   },
+  // Dev server proxy: forward /api -> backend /api/v1
+  server: {
+    proxy: {
+      '^/api': {
+        target: 'http://192.168.1.30:8000',
+        changeOrigin: true,
+        secure: false,
+        // Rewrite /api/... to /api/v1/...
+        rewrite: (path) => path.replace(/^\/api/, '/api/v1'),
+      },
+    },
+  },
 })

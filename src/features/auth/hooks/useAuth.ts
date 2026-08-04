@@ -1,4 +1,4 @@
-import { useMutation } from '@tanstack/react-query';
+﻿import { useMutation } from '@tanstack/react-query';
 import apiClient from '@/lib/api/client';
 import { useAuth } from '@/context/AuthContext';
 import type { LoginFormData, RegisterFormData } from '@/lib/validations/auth.schema';
@@ -28,15 +28,11 @@ const loginUser = async (data: LoginFormData): Promise<{ token: string; user: Us
   }
 
   // Fetch user data using GET /user after receiving token
-  const userResponse = await apiClient.get('/user', {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
+  // apiClient interceptor will attach Authorization header
+  const userResponse = await apiClient.get('/user');
   const user = userResponse.data?.data || userResponse.data;
 
-  return { token, user };
+  return { token, user } as any;
 };
 
 const registerUser = async (data: RegisterFormData): Promise<any> => {
@@ -73,4 +69,4 @@ export const useRegister = () => {
   return useMutation({
     mutationFn: registerUser,
   });
-};
+};
