@@ -1,60 +1,95 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import apiClient from '@/lib/api/client';
+import { bookApi, categoryApi, authorApi } from '@/lib/api/books';
 
 export interface Book {
   id: number;
+  category_id: number;
+  isbn: string;
   title: string;
   author: string;
-  isbn: string;
-  category: string | { id: string | number; name: string; slug?: string; created_at?: string; updated_at?: string };
   publisher?: string;
-  year?: number;
-  pages?: number;
-  language?: string;
-  description?: string;
+  publication_year?: number;
+  total_copies: number;
   available_copies: number;
-  total_copies?: number;
-  created_at?: string;
-  updated_at?: string;
+  category?: {
+    id: number;
+    name: string;
+    slug: string;
+  };
+}
+
+export interface Category {
+  id: number;
+  name: string;
+  slug: string;
 }
 
 interface BookParams {
   search?: string;
   author?: string;
-  category?: string;
+  category_id?: string;
+  per_page?: number;
 }
 
-interface BooksResponse {
-  data: Book[];
+// ─── Helper: Extract Data ────────────────────────────────
+function extractData<T>(data: any): T[] {
+  if (Array.isArray(data)) return data;
+  if (data && typeof data === 'object') {
+    if (Array.isArray(data.data)) return data.data;
+    if (Array.isArray(data.categories)) return data.categories;
+    if (Array.isArray(data.items)) return data.items;
+    if (Array.isArray(data.result)) return data.result;
+  }
+  return [];
 }
 
-interface BookResponse {
-  data: Book;
-}
-
-// GET /books
-export const useBooks = (params?: BookParams) => {
+// ─── GET /categories ─────────────────────────────────────
+export const useCategories = () => {
   return useQuery({
-    queryKey: ['books', params],
-    queryFn: async () => {
-      const response = await apiClient.get<BooksResponse | Book[]>('/books', { params });
-      if (Array.isArray(response.data)) {
-        return response.data;
-      }
-      return response.data?.data || [];
+    queryKey: ['categories'],
+    queryFn: async (): Promise<Category[]> => {
+      const response = await categoryApi.getAll();
+      return extractData<Category>(response.data);
     },
     staleTime: 1000 * 60 * 5,
+    retry: 1,
   });
 };
 
-// GET /books/:id
+// ─── GET /authors ─────────────────────────────────────────
+export const useAuthors = () => {
+  return useQuery({
+    queryKey: ['authors'],
+    queryFn: async (): Promise<string[]> => {
+      const response = await authorApi.getAll();
+      return extractData<string>(response.data);
+    },
+    staleTime: 1000 * 60 * 5,
+    retry: 1,
+  });
+};
+
+// ─── GET /books ──────────────────────────────────────────
+export const useBooks = (params?: BookParams) => {
+  return useQuery({
+    queryKey: ['books', params],
+    queryFn: async (): Promise<Book[]> => {
+      const response = await bookApi.getAll(params);
+      return extractData<Book>(response.data);
+    },
+    staleTime: 1000 * 60 * 5,
+    retry: 1,
+  });
+};
+
+// ─── GET /books/:id ──────────────────────────────────────
 export const useBook = (id: number) => {
   return useQuery({
     queryKey: ['books', id],
-    queryFn: async () => {
-      const response = await apiClient.get<BookResponse | Book>(`/books/${id}`);
-      if ('data' in response.data && response.data.data) {
-        return response.data.data;
+    queryFn: async (): Promise<Book> => {
+      const response = await bookApi.getById(id);
+      if (response.data && typeof response.data === 'object' && 'data' in response.data) {
+        return (response.data as any).data;
       }
       return response.data as Book;
     },
@@ -62,46 +97,49 @@ export const useBook = (id: number) => {
   });
 };
 
-// POST /books
+// ─── POST /books ─────────────────────────────────────────
 export const useCreateBook = () => {
   const queryClient = useQueryClient();
-  
   return useMutation({
     mutationFn: async (newBook: any) => {
-      const { data } = await apiClient.post<BookResponse>('/books', newBook);
-      return data.data;
+      const response = await bookApi.create(newBook);
+      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['books'] });
+      queryClient.invalidateQueries({ queryKey: ['categories'] });
+      queryClient.invalidateQueries({ queryKey: ['authors'] });
     },
   });
 };
 
-// PUT /books/:id
+// ─── PUT /books/:id ──────────────────────────────────────
 export const useUpdateBook = () => {
   const queryClient = useQueryClient();
-  
   return useMutation({
     mutationFn: async ({ id, ...updateData }: any) => {
-      const { data } = await apiClient.put<BookResponse>(`/books/${id}`, updateData);
-      return data.data;
+      const response = await bookApi.update(id, updateData);
+      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['books'] });
+      queryClient.invalidateQueries({ queryKey: ['categories'] });
+      queryClient.invalidateQueries({ queryKey: ['authors'] });
     },
   });
 };
 
-// DELETE /books/:id
+// ─── DELETE /books/:id ───────────────────────────────────
 export const useDeleteBook = () => {
   const queryClient = useQueryClient();
-  
   return useMutation({
     mutationFn: async (id: number) => {
-      await apiClient.delete(`/books/${id}`);
+      await bookApi.delete(id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['books'] });
+      queryClient.invalidateQueries({ queryKey: ['categories'] });
+      queryClient.invalidateQueries({ queryKey: ['authors'] });
     },
   });
 };

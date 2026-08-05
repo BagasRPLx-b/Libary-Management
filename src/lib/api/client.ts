@@ -1,32 +1,24 @@
 ﻿import axios from 'axios';
 
 const apiClient = axios.create({
-  // Use Vite dev server proxy: requests to /api will be proxied to the backend
-  baseURL: import.meta.env.VITE_API_URL || '/api',
-  // Send cookies for Sanctum / session authentication in dev
-  withCredentials: true,
+  baseURL: 'https://ebook-rrp-consumer-word.trycloudflare.com/api/v1',
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
   },
+  timeout: 15000,
 });
 
 // Request interceptor: attach token
 apiClient.interceptors.request.use((config) => {
-  try {
-    const token = localStorage.getItem('access_token');
-    if (token) {
-      // ensure headers object exists
-      config.headers = config.headers || {};
-      (config.headers as any).Authorization = `Bearer ${token}`;
-    }
-  } catch (e) {
-    // ignore localStorage errors
+  const token = localStorage.getItem('access_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
 
-// Response interceptor: handle 401, 403, and 500
+// Response interceptor
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -35,9 +27,9 @@ apiClient.interceptors.response.use(
       localStorage.removeItem('user');
       window.location.href = '/login';
     } else if (error.response?.status === 403) {
-      alert('Akses ditolak');
+      console.error('Akses ditolak:', error.response.data);
     } else if (error.response?.status === 500) {
-      alert('Terjadi kesalahan server');
+      console.error('Server error:', error.response.data);
     }
     return Promise.reject(error);
   }

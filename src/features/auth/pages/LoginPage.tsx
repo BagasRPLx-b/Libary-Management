@@ -25,21 +25,25 @@ export default function LoginPage() {
     mode: 'onChange',
   });
 
-  const onSubmit = (data: LoginFormData) => {
-    setError(null);
-    login(data, {
-      onSuccess: () => {
-        navigate('/catalog', { replace: true });
-      },
-      onError: (err) => {
-        if (err instanceof AxiosError) {
-          setError(err.response?.data?.message || 'Login gagal. Silakan coba lagi.');
-        } else {
-          setError('Terjadi kesalahan saat login.');
-        }
-      },
-    });
-  };
+const onSubmit = (data: LoginFormData) => {
+  setError(null);
+  console.log('🟢 Submitting login...');
+  
+  login(data, {
+    onSuccess: () => {
+      console.log('🟢 Login mutation success, navigating to /catalog');
+      navigate('/catalog', { replace: true });
+    },
+    onError: (err) => {
+      console.error('🔴 Login mutation error:', err);
+      if (err instanceof AxiosError) {
+        setError(err.response?.data?.message || 'Login gagal. Silakan coba lagi.');
+      } else {
+        setError('Terjadi kesalahan saat login.');
+      }
+    },
+  });
+};
 
   return (
     /* PERBAIKAN 1: Gunakan w-screen & min-h-screen tanpa margin offset */

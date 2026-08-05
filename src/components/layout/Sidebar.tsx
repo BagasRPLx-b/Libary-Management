@@ -1,3 +1,4 @@
+// src/components/layout/Sidebar.tsx
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -6,14 +7,19 @@ import {
   Repeat, 
   Users, 
   BarChart3, 
-  LogOut 
+  LogOut,
+  User,
+  BookCheck
 } from 'lucide-react';
 
 const menuItems = [
-  { to: '/catalog',      label: 'Catalog',      icon: BookOpen,  roles: ['Admin', 'Staff', 'Member'] },
-  { to: '/circulation',  label: 'Circulation',  icon: Repeat,    roles: ['Admin', 'Staff'] },
-  { to: '/members',      label: 'Members',      icon: Users,     roles: ['Admin', 'Staff'] },
-  { to: '/reports',      label: 'Reports',      icon: BarChart3, roles: ['Admin'] },
+  { to: '/catalog',      label: 'Katalog',        icon: BookOpen,  roles: ['Admin', 'Staff', 'Member'] },
+  { to: '/circulation',  label: 'Circulation',    icon: Repeat,    roles: ['Admin', 'Staff'] },
+  { to: '/members',      label: 'Members',        icon: Users,     roles: ['Admin', 'Staff'] },
+  { to: '/reports',      label: 'Reports',        icon: BarChart3, roles: ['Admin'] },
+  // 👇 TAMBAHKAN UNTUK MEMBER
+  { to: '/my-loans',     label: 'Peminjaman Saya', icon: BookCheck, roles: ['Member'] },
+  { to: '/profile',      label: 'Profil',         icon: User,      roles: ['Member'] },
 ];
 
 export default function Sidebar() {

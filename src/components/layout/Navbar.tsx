@@ -83,53 +83,6 @@ export default function Navbar() {
             </div>
           )}
         </div>
-
-        {/* Avatar user + dropdown */}
-        <div className="relative">
-          <button
-            onClick={() => {
-              setShowDropdown(!showDropdown);
-              setShowNotifications(false);
-            }}
-            className="flex items-center gap-2 hover:bg-gray-50 p-1.5 rounded-lg transition-all"
-          >
-            <div className="w-8 h-8 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-bold text-sm shadow-inner">
-              {user?.name?.charAt(0).toUpperCase() || 'U'}
-            </div>
-            <div className="text-left hidden sm:block">
-              <p className="text-xs font-semibold text-gray-700 leading-none mb-0.5">{user?.name}</p>
-              <p className="text-[10px] text-gray-500 capitalize leading-none">{user?.role}</p>
-            </div>
-            <ChevronDown className="h-4 w-4 text-gray-400" />
-          </button>
-
-          {showDropdown && (
-            <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-100 rounded-lg shadow-lg py-1 z-50 animate-fade-in">
-              <div className="px-4 py-2 border-b border-gray-50 sm:hidden">
-                <p className="text-sm font-semibold text-gray-700">{user?.name}</p>
-                <p className="text-xs text-gray-500 capitalize">{user?.role}</p>
-              </div>
-              <Link
-                to="/profile"
-                className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                onClick={() => setShowDropdown(false)}
-              >
-                <User className="h-4 w-4 text-gray-400" />
-                <span>Profil saya</span>
-              </Link>
-              <button
-                onClick={() => {
-                  setShowDropdown(false);
-                  logout();
-                }}
-                className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors text-left"
-              >
-                <LogOut className="h-4 w-4 text-red-500" />
-                <span>Logout</span>
-              </button>
-            </div>
-          )}
-        </div>
       </div>
     </header>
   );

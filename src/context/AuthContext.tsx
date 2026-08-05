@@ -20,33 +20,37 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(() => {
-    const storedToken = localStorage.getItem('access_token');
-    return storedToken && storedToken !== 'undefined' && storedToken !== 'null' ? storedToken : null;
-  });
-
-  useEffect(() => {
-    if (token) {
+  // Inisialisasi dari localStorage
+  const [user, setUser] = useState<User | null>(() => {
+    try {
       const storedUser = localStorage.getItem('user');
       if (storedUser && storedUser !== 'undefined' && storedUser !== 'null') {
-        try {
-          const parsedUser = JSON.parse(storedUser);
-          setUser(parsedUser);
-        } catch (error) {
-          console.error('Failed to parse user:', error);
-          localStorage.removeItem('user');
-          setUser(null);
-        }
-      } else {
-        setUser(null);
+        return JSON.parse(storedUser);
       }
-    } else {
-      setUser(null);
+    } catch (e) {
+      console.error('Failed to parse user from localStorage:', e);
     }
-  }, [token]);
+    return null;
+  });
+
+  const [token, setToken] = useState<string | null>(() => {
+    const storedToken = localStorage.getItem('access_token');
+    if (storedToken && storedToken !== 'undefined' && storedToken !== 'null') {
+      return storedToken;
+    }
+    return null;
+  });
+
+  // Debug saat mount
+  useEffect(() => {
+    console.log('🔵 AuthContext mounted');
+    console.log('🔵 Token from localStorage:', token);
+    console.log('🔵 User from localStorage:', user);
+    console.log('🔵 isAuthenticated:', !!token && !!user);
+  }, []);
 
   const login = (userData: User, accessToken: string) => {
+    console.log('🔵 login() called');
     setUser(userData);
     setToken(accessToken);
     localStorage.setItem('access_token', accessToken);
@@ -67,6 +71,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const isAuthenticated = !!token && !!user;
+
+  console.log('🟢 AuthContext render - isAuthenticated:', isAuthenticated);
 
   return (
     <AuthContext.Provider value={{ user, token, login, logout, isAuthenticated }}>

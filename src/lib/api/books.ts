@@ -1,33 +1,57 @@
+// src/lib/api/books.ts
 import apiClient from './client';
-import { Book, ApiResponse, ApiMessageResponse } from './types';
+import { Book, Category } from '@/features/books/hooks/useBooks';
 
-export const getBooks = async (params?: any): Promise<Book[]> => {
-  const response = await apiClient.get<ApiResponse<Book[]> | Book[]>('/books', { params });
-  if (Array.isArray(response.data)) {
-    return response.data;
-  }
-  return response.data.data;
+export const bookApi = {
+  getAll: (params?: {
+    search?: string;
+    category_id?: string;
+    author?: string;
+    per_page?: number;
+    page?: number;
+  }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.search) queryParams.set('search', params.search);
+    if (params?.category_id) queryParams.set('category_id', params.category_id);
+    if (params?.author) queryParams.set('author', params.author);
+    if (params?.per_page) queryParams.set('per_page', String(params.per_page));
+    if (params?.page) queryParams.set('page', String(params.page));
+    
+    const url = `/books${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    console.log('📡 API URL:', url);
+    return apiClient.get(url);
+  },
+
+  getById: (id: number) => {
+    return apiClient.get(`/books/${id}`);
+  },
+
+  create: (data: any) => {
+    return apiClient.post('/books', data);
+  },
+
+  update: (id: number, data: any) => {
+    return apiClient.put(`/books/${id}`, data);
+  },
+
+  delete: (id: number) => {
+    return apiClient.delete(`/books/${id}`);
+  },
 };
 
-export const getBook = async (id: string | number): Promise<Book> => {
-  const response = await apiClient.get<ApiResponse<Book> | Book>(`/books/${id}`);
-  if ('data' in response.data && response.data.data) {
-    return response.data.data;
-  }
-  return response.data as Book;
+export const categoryApi = {
+  getAll: () => {
+    console.log('📡 Calling GET /categories');
+    return apiClient.get('/categories');
+  },
+  getById: (id: number) => {
+    return apiClient.get(`/categories/${id}`);
+  },
 };
 
-export const createBook = async (data: any): Promise<ApiMessageResponse> => {
-  const response = await apiClient.post<ApiMessageResponse>('/books', data);
-  return response.data;
-};
-
-export const updateBook = async (id: string | number, data: any): Promise<ApiMessageResponse> => {
-  const response = await apiClient.put<ApiMessageResponse>(`/books/${id}`, data);
-  return response.data;
-};
-
-export const deleteBook = async (id: string | number): Promise<ApiMessageResponse> => {
-  const response = await apiClient.delete<ApiMessageResponse>(`/books/${id}`);
-  return response.data;
+export const authorApi = {
+  getAll: () => {
+    console.log('📡 Calling GET /authors');
+    return apiClient.get('/authors');
+  },
 };

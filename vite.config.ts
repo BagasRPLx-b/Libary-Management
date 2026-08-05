@@ -17,9 +17,9 @@ export default defineConfig({
   server: {
     proxy: {
       '^/api': {
-        target: 'http://192.168.1.30:8000',
+        target: 'https://ebook-rrp-consumer-word.trycloudflare.com',
         changeOrigin: true,
-        secure: false,
+        secure: true,
         // Rewrite /api/... to /api/v1/...
         rewrite: (path) => path.replace(/^\/api/, '/api/v1'),
       },
