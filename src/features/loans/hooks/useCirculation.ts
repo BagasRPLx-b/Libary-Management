@@ -1,73 +1,35 @@
+// src/features/loans/hooks/useCirculation.ts
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import apiClient from '@/lib/api/client';
-import type { Book } from '@/features/books/hooks/useBooks';
-
-export interface Transaction {
-  id: number;
-  member: string;
-  book: string;
-  type: 'Issue' | 'Return';
-  time: string;
-}
-
-interface ScanBookResponse {
-  data: Book;
-}
+import { getTransactions, issueBook, returnBook } from '@/lib/api/loans';
 
 export const useTodayTransactions = () => {
   return useQuery({
-    queryKey: ['circulation', 'today'],
-    queryFn: async () => {
-      const response = await apiClient.get<Transaction[] | { data: Transaction[] }>('/circulation/today');
-      if (Array.isArray(response.data)) {
-        return response.data;
-      }
-      return response.data?.data || [];
-    },
-  });
-};
-
-export const useScanBook = (barcode: string) => {
-  return useQuery({
-    queryKey: ['circulation', 'scan', barcode],
-    queryFn: async () => {
-      const response = await apiClient.get<ScanBookResponse | Book>(`/books/scan/${barcode}`);
-      if ('data' in response.data && response.data.data) {
-        return response.data.data;
-      }
-      return response.data as Book;
-    },
-    enabled: !!barcode,
+    queryKey: ['transactions', 'today'],
+    queryFn: () => getTransactions({ date: new Date().toISOString().split('T')[0] }),
+    staleTime: 1000 * 60 * 5,
   });
 };
 
 export const useIssueBook = () => {
   const queryClient = useQueryClient();
+  
   return useMutation({
-    mutationFn: async (payload: { book_id: number; member_id?: number }) => {
-      const { data } = await apiClient.post('/loans/issue', payload);
-      return data;
-    },
+    mutationFn: (data: { book_id: number; member_id: number }) => issueBook(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['circulation'] });
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
       queryClient.invalidateQueries({ queryKey: ['books'] });
-      queryClient.invalidateQueries({ queryKey: ['my-loans'] });
     },
   });
 };
 
 export const useReturnBook = () => {
   const queryClient = useQueryClient();
+  
   return useMutation({
-    mutationFn: async (payload: { book_id?: number; loan_id?: number }) => {
-      const { data } = await apiClient.post('/loans/return', payload);
-      return data;
-    },
+    mutationFn: (loanId: number) => returnBook(loanId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['circulation'] });
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
       queryClient.invalidateQueries({ queryKey: ['books'] });
-      queryClient.invalidateQueries({ queryKey: ['my-loans'] });
-      queryClient.invalidateQueries({ queryKey: ['reports'] });
     },
   });
 };

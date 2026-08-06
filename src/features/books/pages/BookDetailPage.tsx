@@ -121,19 +121,6 @@ export default function BookDetailPage() {
                 <span className="font-medium">{book.category?.name ?? '-'}</span>
               </div>
             </div>
-
-            {isMember && (
-              <div className="pt-4 border-t">
-                <Button
-                  size="lg"
-                  className="w-full"
-                  disabled={book.available_copies === 0}
-                  onClick={handleBorrow}
-                >
-                  {book.available_copies > 0 ? 'Pinjam Buku' : 'Tidak Tersedia'}
-                </Button>
-              </div>
-            )}
           </CardContent>
         </Card>
 

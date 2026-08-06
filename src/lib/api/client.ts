@@ -1,7 +1,7 @@
 ﻿import axios from 'axios';
 
 const apiClient = axios.create({
-  baseURL: 'https://ebook-rrp-consumer-word.trycloudflare.com/api/v1',
+  baseURL: 'https://sega-mixture-helmet-license.trycloudflare.com/api/v1',
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',

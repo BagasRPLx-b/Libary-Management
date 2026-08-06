@@ -1,8 +1,10 @@
+// src/features/members/hooks/useMember.ts
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '@/lib/api/client';
 
 export interface Member {
-  id: number; // ← Ini USER ID (users.id)
+  id: number; // User ID (users.id)
+  member_id?: number; // Member ID (members.id) - untuk dikirim ke loans/issue
   member_code?: string;
   name: string;
   email: string;
@@ -13,7 +15,7 @@ export interface Member {
   updated_at?: string;
 }
 
-// GET /members
+// ─── GET /members ─────────────────────────────────────────
 export const useMembers = (search?: string) => {
   return useQuery({
     queryKey: ['members', search],
@@ -22,13 +24,13 @@ export const useMembers = (search?: string) => {
         params: search ? { search } : {},
       });
 
-      const rawData = response.data?.data || [];
+      // Response berbentuk pagination: { data: [...] }
+      const rawData = response.data?.data || response.data || [];
 
       const members: Member[] = rawData.map((item: any) => {
-        // item.id = user ID (3, 5, 6)
-        // item.member.id = member ID (11, 12, 13)
         return {
-          id: item.id, // ← USER ID (dipakai untuk PATCH)
+          id: item.id, // User ID (3, 5, 6)
+          member_id: item.member?.id, // ✅ Member ID (11, 12, 13) - untuk loans/issue
           member_code: item.member?.member_code || '',
           name: item.name || item.member?.name,
           email: item.email || item.member?.email,
@@ -40,21 +42,24 @@ export const useMembers = (search?: string) => {
         };
       });
 
+      console.log('📡 Members:', members);
       return members;
     },
     staleTime: 1000 * 60 * 5,
   });
 };
 
-// GET /members/:userId
+// ─── GET /members/:userId ────────────────────────────────
 export const useMember = (userId: number) => {
   return useQuery({
     queryKey: ['members', userId],
     queryFn: async (): Promise<Member> => {
       const response = await apiClient.get(`/members/${userId}`);
       const item = response.data?.data || response.data;
+
       return {
         id: item.id || userId,
+        member_id: item.member?.id,
         member_code: item.member?.member_code || '',
         name: item.name || item.member?.name,
         email: item.email || item.member?.email,
@@ -67,7 +72,7 @@ export const useMember = (userId: number) => {
   });
 };
 
-// PATCH /members/{userId} (edit name, email, phone)
+// ─── PATCH /members/{userId} ─────────────────────────────
 export const useUpdateMember = () => {
   const queryClient = useQueryClient();
 
@@ -82,7 +87,7 @@ export const useUpdateMember = () => {
   });
 };
 
-// PATCH /members/{userId}/status (suspend/active)
+// ─── PATCH /members/{userId}/status ──────────────────────
 export const useToggleMemberStatus = () => {
   const queryClient = useQueryClient();
 
@@ -97,7 +102,7 @@ export const useToggleMemberStatus = () => {
   });
 };
 
-// DELETE /members/{userId}
+// ─── DELETE /members/{userId} ────────────────────────────
 export const useDeleteMember = () => {
   const queryClient = useQueryClient();
 
