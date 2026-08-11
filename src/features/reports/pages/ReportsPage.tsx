@@ -10,41 +10,38 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useOverdueLoans } from '../hooks/useReports';
+import type { FormattedOverdueLoan, OverdueLoan } from '@/types';
 
 export default function ReportsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [dateFilter, setDateFilter] = useState('');
-  const [selectedLoan, setSelectedLoan] = useState<any | null>(null);
+  const [selectedLoan, setSelectedLoan] = useState<FormattedOverdueLoan | null>(null);
 
   const { data: overdueLoans = [], isLoading, isError, refetch } = useOverdueLoans(searchTerm);
 
-  console.log('📊 overdueLoans from hook:', overdueLoans);
-
   // ✅ Format data untuk tabel
-  const formattedLoans = overdueLoans.map((loan: any) => ({
+  const formattedLoans = overdueLoans.map((loan: OverdueLoan) => ({
     id: loan.id,
     member: loan.member?.name || 'Unknown',
     book: loan.book?.title || 'Unknown',
     due_date: loan.due_date,
     borrowed_at: loan.borrowed_at,
-    fine_amount: parseFloat(loan.estimated_fine || loan.fine_amount || 0),
+    fine_amount: parseFloat(String(loan.estimated_fine ?? loan.fine_amount ?? 0)),
     status: loan.status,
     days_overdue: loan.days_overdue || 0,
   }));
 
-  console.log('📋 formattedLoans:', formattedLoans);
-
-  const filteredLoans = formattedLoans.filter((loan: any) => {
+  const filteredLoans = formattedLoans.filter((loan) => {
     if (dateFilter && loan.due_date && !loan.due_date.startsWith(dateFilter)) return false;
     return true;
   });
 
-  const totalFine = filteredLoans.reduce((sum: number, loan: any) => sum + (loan.fine_amount || 0), 0);
+  const totalFine = filteredLoans.reduce((sum: number, loan) => sum + (loan.fine_amount || 0), 0);
   const totalOverdue = filteredLoans.length;
 
   // Member terbanyak
   const memberCounts: Record<string, number> = {};
-  filteredLoans.forEach((loan: any) => {
+  filteredLoans.forEach((loan) => {
     if (loan.member) {
       memberCounts[loan.member] = (memberCounts[loan.member] || 0) + 1;
     }
@@ -192,7 +189,7 @@ export default function ReportsPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredLoans.map((loan: any) => {
+                  filteredLoans.map((loan) => {
                     const days = loan.days_overdue || calculateDaysOverdue(loan.due_date);
                     return (
                       <TableRow key={loan.id} className="hover:bg-gray-50/30 transition-colors">

@@ -5,6 +5,7 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const apiProxyTarget = process.env.VITE_API_PROXY || process.env.API_PROXY || 'https://barrier-generation-queensland-session.trycloudflare.com'
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
@@ -17,7 +18,7 @@ export default defineConfig({
   server: {
     proxy: {
       '^/api': {
-        target: 'https://barrier-generation-queensland-session.trycloudflare.com',
+        target: apiProxyTarget,
         changeOrigin: true,
         secure: true,
         // Rewrite /api/... to /api/v1/...

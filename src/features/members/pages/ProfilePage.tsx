@@ -5,23 +5,27 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
-  Mail, Phone, Clock, RefreshCw, MapPin, User, Shield, ChevronRight, BookOpen,
+  Mail, Phone, RefreshCw, MapPin, ChevronRight, BookOpen,
   DollarSign, Settings, Edit3, Key, Library, Calendar, CheckCircle,
-  ArrowUpRight, Camera
+  ArrowUpRight, Camera, Shield
 } from 'lucide-react';
 import MemberPageHeader from '@/components/layout/MemberPageHeader';
 import { useProfile, useMyLoans } from '../hooks/useProfile';
 import { formatRupiah, formatDateString } from '@/lib/formatters';
+import type { Loan } from '@/types';
 
 export default function ProfilePage() {
   const { user } = useAuth();
   const { data: profile, isLoading: isLoadingProfile, isError: isErrorProfile, refetch: refetchProfile } = useProfile();
   const { data: myLoans = [], isLoading: isLoadingLoans, isError: isErrorLoans, refetch: refetchLoans } = useMyLoans();
 
-  const activeLoans = myLoans.filter((loan: any) => loan.status === 'active' || loan.status === 'overdue');
-  const loanHistory = myLoans.filter((loan: any) => loan.status === 'returned');
+  const activeLoans = myLoans.filter((loan: Loan) => loan.status === 'active' || loan.status === 'overdue');
+  const loanHistory = myLoans.filter((loan: Loan) => loan.status === 'returned');
 
   const currentProfile = profile || user;
+  const memberCode = currentProfile && typeof currentProfile === 'object' && 'member_code' in currentProfile
+    ? currentProfile.member_code
+    : undefined;
 
   const totalBorrowed = myLoans.length;
   const totalActiveLoans = activeLoans.length;
@@ -38,13 +42,12 @@ export default function ProfilePage() {
 
   const recentHistory = loanHistory.slice(0, 5);
 
-  const getLoanDate = (loan: any): string | null => {
+  const getLoanDate = (loan: Loan): string | null => {
     return loan.returned_at ||
       loan.return_date ||
       loan.borrowed_at ||
       loan.borrow_date ||
       loan.created_at ||
-      loan.date ||
       loan.updated_at ||
       null;
   };
@@ -144,7 +147,7 @@ export default function ProfilePage() {
                     <CheckCircle className="w-3 h-3 mr-1 inline" /> Aktif
                   </Badge>
                 </div>
-                <p className="text-sm text-gray-500 mt-1">ID Anggota: {(currentProfile as any)?.member_code || 'LC-20240901'}</p>
+                <p className="text-sm text-gray-500 mt-1">ID Anggota: {memberCode || 'LC-20240901'}</p>
               </div>
             </div>
 
@@ -246,7 +249,7 @@ export default function ProfilePage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="flex -space-x-3">
-                    {activeLoans.slice(0, 3).map((loan: any, idx: number) => (
+                    {activeLoans.slice(0, 3).map((loan: Loan, idx: number) => (
                       <div key={idx} className="w-8 h-8 rounded-full border-2 border-white bg-gray-200 overflow-hidden">
                         <img src={`https://picsum.photos/32/32?random=${loan.id || idx}`} className="w-full h-full object-cover" />
                       </div>

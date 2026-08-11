@@ -1,13 +1,11 @@
 // src/features/members/pages/MemberLoansPage.tsx
 import { useState } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
-  BookOpen, Calendar, Clock, AlertCircle, CheckCircle, RefreshCw,
-  ChevronRight, Download, Eye, BookText, Info
+  BookOpen, CheckCircle, Download, Eye, Info
 } from 'lucide-react';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { id } from 'date-fns/locale';
@@ -28,9 +26,12 @@ interface Loan {
   book: Book;
   borrow_date: string;
   due_date: string;
-  return_date: string | null;
+  return_date?: string | null;
+  borrowed_at?: string;
+  returned_at?: string | null;
+  created_at?: string;
   status: 'active' | 'returned' | 'overdue';
-  fine_amount: number;
+  fine_amount?: number;
 }
 
 export default function MemberLoansPage() {
@@ -46,7 +47,6 @@ export default function MemberLoansPage() {
 
   const totalActive = activeLoans.length;
   const maxLoans = 5;
-  const loanLimit = totalActive;
 
   // ─── Format tanggal ──────────────────────────────────────
   const formatDate = (dateStr?: string | null) => {
@@ -59,7 +59,7 @@ export default function MemberLoansPage() {
   };
 
   // ─── Cari tanggal ────────────────────────────────────────
-  const getLoanDate = (loan: any, type: 'borrow' | 'return'): string | null => {
+  const getLoanDate = (loan: Loan, type: 'borrow' | 'return'): string | null => {
     if (type === 'borrow') {
       return loan.borrowed_at || loan.borrow_date || loan.created_at || null;
     }
@@ -80,17 +80,6 @@ export default function MemberLoansPage() {
     }
   };
 
-  const getStatusBadge = (status: string, dueDate?: string) => {
-    const isOverdue = status === 'overdue' || (status === 'active' && getDaysLeft(dueDate) < 0);
-    
-    if (isOverdue) {
-      return <Badge className="bg-red-50 text-red-700 border-red-200 font-medium">⚠️ Terlambat</Badge>;
-    }
-    if (status === 'returned') {
-      return <Badge className="bg-gray-50 text-gray-600 border-gray-200 font-medium">✅ Selesai</Badge>;
-    }
-    return <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 font-medium">📖 Dipinjam</Badge>;
-  };
 
   // ─── Render ──────────────────────────────────────────────
   return (
@@ -146,7 +135,7 @@ export default function MemberLoansPage() {
           </div>
         ) : (
           <div className="flex gap-6 overflow-x-auto pb-6 scrollbar-hide">
-            {activeLoans.map((loan: any) => {
+            {activeLoans.map((loan: Loan) => {
               const daysLeft = getDaysLeft(loan.due_date);
               const isOverdue = loan.status === 'overdue' || daysLeft < 0;
               const progressPercent = Math.max(0, Math.min(100, ((14 - Math.max(0, daysLeft)) / 14) * 100));
@@ -229,6 +218,18 @@ export default function MemberLoansPage() {
             Unduh Laporan <Download className="h-4 w-4" />
           </Button>
         </div>
+        {isErrorHistory && (
+          <div className="p-6">
+            <Alert variant="destructive">
+              <AlertDescription className="flex items-center justify-between">
+                <span>Gagal memuat riwayat peminjaman.</span>
+                <Button variant="outline" size="sm" onClick={() => refetchHistory()}>
+                  Coba Lagi
+                </Button>
+              </AlertDescription>
+            </Alert>
+          </div>
+        )}
 
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -266,7 +267,7 @@ export default function MemberLoansPage() {
                   </td>
                 </tr>
               ) : (
-                paginatedHistory.map((loan: any) => (
+                paginatedHistory.map((loan: Loan) => (
                   <tr key={loan.id} className="hover:bg-gray-50/70 transition-colors">
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-3">

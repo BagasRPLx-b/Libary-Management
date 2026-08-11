@@ -1,6 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
 import apiClient from '@/lib/api/client';
 import { useAuth } from '@/context/AuthContext';
+import type { ApiMessageResponse } from '@/types';
 import type { LoginFormData, RegisterFormData } from '@/lib/validations/auth.schema';
 
 export interface User {
@@ -38,7 +39,7 @@ const loginUser = async (data: LoginFormData): Promise<{ token: string; user: Us
   return { token, user };
 };
 
-const registerUser = async (data: RegisterFormData): Promise<any> => {
+const registerUser = async (data: RegisterFormData): Promise<ApiMessageResponse> => {
   const { confirmPassword, ...payload } = data;
   const response = await apiClient.post('/register', {
     ...payload,

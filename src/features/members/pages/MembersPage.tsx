@@ -13,9 +13,11 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useMembers, useUpdateMember, useDeleteMember, type Member } from '../hooks/useMember';
 import apiClient from '@/lib/api/client';
 import { getErrorMessage } from '@/lib/error-handler';
+import { useDebounce } from '@/hooks/useDebounce';
 
 export default function MembersPage() {
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 400);
   const [statusFilter, setStatusFilter] = useState('all');
   const [editingMember, setEditingMember] = useState<Member | null>(null);
   const [deletingMember, setDeletingMember] = useState<Member | null>(null);
@@ -33,7 +35,7 @@ export default function MembersPage() {
   const itemsPerPage = 10;
 
   const queryClient = useQueryClient();
-  const { data: members = [], isLoading, isError, refetch } = useMembers(search);
+  const { data: members = [], isLoading, isError, refetch } = useMembers(debouncedSearch);
   const { mutate: updateMember, isPending: isUpdating } = useUpdateMember();
   const { mutate: deleteMemberMutation, isPending: isDeleting } = useDeleteMember();
 
@@ -106,8 +108,9 @@ export default function MembersPage() {
                 onSuccess: () => {
                   setAlert({ type: 'success', message: 'Data member berhasil diperbarui.' });
                 },
-                onError: (err: any) => {
-                  setAlert({ type: 'error', message: err.response?.data?.errors?.email?.[0] || 'Gagal mengubah status.' });
+                onError: (error) => {
+                  const message = getErrorMessage(error);
+                  setAlert({ type: 'error', message: message || 'Gagal mengubah status.' });
                 },
                 onSettled: () => {
                   queryClient.invalidateQueries({ queryKey: ['members'] });
@@ -118,8 +121,8 @@ export default function MembersPage() {
             setAlert({ type: 'success', message: 'Data member berhasil diperbarui.' });
           }
         },
-        onError: (err: any) => {
-          setAlert({ type: 'error', message: err.response?.data?.errors?.email?.[0] || err.response?.data?.message || 'Gagal memperbarui member.' });
+        onError: (error) => {
+          setAlert({ type: 'error', message: getErrorMessage(error) });
           queryClient.invalidateQueries({ queryKey: ['members'] });
         },
         onSettled: () => {
@@ -136,8 +139,8 @@ export default function MembersPage() {
         setDeletingMember(null);
         if (paginatedMembers.length === 1 && currentPage > 1) setCurrentPage((prev) => prev - 1);
       },
-      onError: (err: any) => {
-        setAlert({ type: 'error', message: getErrorMessage(err) });
+      onError: (error) => {
+        setAlert({ type: 'error', message: getErrorMessage(error) });
       },
     });
   };
@@ -196,7 +199,10 @@ export default function MembersPage() {
             placeholder="Cari nama, email, atau kode..."
             className="pl-9 rounded-lg bg-gray-50 border-gray-200 h-10 w-full"
             value={search}
-            onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setCurrentPage(1);
+            }}
           />
         </div>
         <Select value={statusFilter} onValueChange={(val) => { setStatusFilter(val); setCurrentPage(1); }}>

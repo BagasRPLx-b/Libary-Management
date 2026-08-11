@@ -27,15 +27,11 @@ export default function LoginPage() {
 
 const onSubmit = (data: LoginFormData) => {
   setError(null);
-  console.log('🟢 Submitting login...');
-  
   login(data, {
     onSuccess: () => {
-      console.log('🟢 Login mutation success, navigating to /catalog');
       navigate('/catalog', { replace: true });
     },
     onError: (err) => {
-      console.error('🔴 Login mutation error:', err);
       if (err instanceof AxiosError) {
         setError(err.response?.data?.message || 'Login gagal. Silakan coba lagi.');
       } else {
@@ -150,9 +146,6 @@ const onSubmit = (data: LoginFormData) => {
                   />
                   <span>Ingat Saya</span>
                 </label>
-                <Link to="/forgot-password" className="text-primary-600 hover:underline font-medium">
-                  Lupa Password?
-                </Link>
               </div>
 
               {/* BUTTON LOGIN */}

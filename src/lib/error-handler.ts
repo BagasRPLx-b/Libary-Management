@@ -10,10 +10,13 @@ export interface ApiError {
 export function handleApiError(error: unknown): ApiError {
   if (error instanceof AxiosError) {
     const status = error.response?.status || 500;
-    const data = error.response?.data as any;
+    const data = error.response?.data as unknown;
 
-    // Jika backend mengembalikan error message
-    if (data?.message) {
+    const isApiErrorData = (value: unknown): value is { message?: string; errors?: Record<string, string[]> } => {
+      return typeof value === 'object' && value !== null;
+    };
+
+    if (isApiErrorData(data) && data.message) {
       return {
         message: data.message,
         status,
@@ -22,8 +25,7 @@ export function handleApiError(error: unknown): ApiError {
     }
 
     // Jika ada validation errors (Laravel)
-    if (data?.errors) {
-      // ✅ Perbaiki: Gunakan Object.values dengan aman
+    if (isApiErrorData(data) && data.errors && typeof data.errors === 'object') {
       const errorMessages = data.errors as Record<string, string[]>;
       const firstError = Object.values(errorMessages)[0]?.[0] || 'Validation error';
       return {

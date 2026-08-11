@@ -1,13 +1,9 @@
 import { useState } from 'react';
-import { useAuth } from '@/context/AuthContext';
-import { Button } from '@/components/ui/button';
-import { Bell, Search, User, LogOut, ChevronDown, Home } from 'lucide-react';
+import { Bell, Search, Home } from 'lucide-react';
 import { useLocation, Link } from 'react-router-dom';
 
 export default function Navbar() {
-  const { user, logout } = useAuth();
   const location = useLocation();
-  const [showDropdown, setShowDropdown] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
 
   const pathnames = location.pathname.split('/').filter((x) => x);
@@ -57,7 +53,6 @@ export default function Navbar() {
           <button 
             onClick={() => {
               setShowNotifications(!showNotifications);
-              setShowDropdown(false);
             }}
             className="p-2 text-gray-500 hover:text-primary-600 hover:bg-gray-50 rounded-full transition-all relative"
           >

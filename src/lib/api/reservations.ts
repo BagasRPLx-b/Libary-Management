@@ -27,7 +27,7 @@ export const reservationApi = {
   },
 
   // GET /reservations - Get reservations (members get their own, admin/staff get all)
-  getAll: (params?: any) => {
+  getAll: (params?: { status?: string; member_id?: number }) => {
     return apiClient.get('/reservations', { params });
   },
 

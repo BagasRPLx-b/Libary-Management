@@ -7,23 +7,24 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Search, Calendar, BookOpen, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { format, parseISO } from 'date-fns';
 import { id } from 'date-fns/locale';
+import type { ActiveLoan } from '@/types';
 
 export default function ActiveLoansPage() {
   const [searchTerm, setSearchTerm] = useState('');
 
-  const { data: loans = [], isLoading, isError, refetch } = useQuery({
+  const { data: loans = [], isLoading, isError, refetch } = useQuery<ActiveLoan[]>({
     queryKey: ['loans', 'active', 'all'],
     queryFn: async () => {
-      // ✅ Ambil SEMUA peminjaman dengan status active (tanpa filter tanggal)
-      const response = await apiClient.get('/loans', { 
-        params: { 
+      const response = await apiClient.get('/loans', {
+        params: {
           status: 'active',
-          per_page: 100 // Ambil semua
-        } 
+          per_page: 100,
+        },
       });
       const data = response.data?.data || response.data || [];
       return Array.isArray(data) ? data : [];
@@ -32,7 +33,7 @@ export default function ActiveLoansPage() {
   });
 
   // Filter berdasarkan search
-  const filteredLoans = loans.filter((loan: any) => {
+  const filteredLoans = loans.filter((loan) => {
     if (!searchTerm) return true;
     const memberName = loan.member?.name || '';
     const bookTitle = loan.book?.title || '';
@@ -102,6 +103,17 @@ export default function ActiveLoansPage() {
         />
       </div>
 
+      {isError && (
+        <Alert variant="destructive">
+          <AlertDescription className="flex items-center justify-between">
+            <span>Gagal memuat daftar peminjaman aktif.</span>
+            <Button variant="outline" size="sm" onClick={() => refetch()}>
+              Muat Ulang
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Table */}
       <Card className="shadow-sm border-gray-200 overflow-hidden">
         <CardHeader className="bg-gray-50/50 border-b border-gray-100">
@@ -141,7 +153,7 @@ export default function ActiveLoansPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredLoans.map((loan: any, index: number) => (
+                  filteredLoans.map((loan, index: number) => (
                     <TableRow key={loan.id} className="hover:bg-gray-50/50 transition-colors">
                       <TableCell className="font-medium text-gray-500">{index + 1}</TableCell>
                       <TableCell className="font-semibold text-gray-800 flex items-center gap-2">

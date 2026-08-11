@@ -12,16 +12,17 @@ import { Input } from '@/components/ui/input';
 import { Barcode, ArrowRightLeft, Undo2, Loader2, Search, Calendar } from 'lucide-react';
 import { useMembers } from '@/features/members/hooks/useMember';
 import apiClient from '@/lib/api/client';
-import type { Book } from '@/features/books/hooks/useBooks';
+import type { Book, ScannedBook } from '@/types';
 import { getErrorMessage } from '@/lib/error-handler';
 import { useTodayTransactions, useIssueBook, useReturnBook } from '@/features/loans/hooks/useCirculation';
+import type { TodayTransaction } from '@/types';
 
 // ─── Component ────────────────────────────────────────────
 export default function CirculationPage() {
   // ─── State ──────────────────────────────────────────────
   const [barcode, setBarcode] = useState('');
   const [mode, setMode] = useState<'issue' | 'return'>('issue');
-  const [scannedBook, setScannedBook] = useState<Book & { active_loans?: any[] } | null>(null);
+  const [scannedBook, setScannedBook] = useState<ScannedBook | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [alertMsg, setAlertMsg] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [selectedMember, setSelectedMember] = useState<string>('');
@@ -50,7 +51,7 @@ export default function CirculationPage() {
 
     try {
       const response = await apiClient.get(`/books/scan/${barcode.trim()}`);
-      const bookData = response.data;
+      const bookData = response.data as Book;
 
       if (mode === 'issue' && bookData.available_copies === 0) {
         setAlertMsg({ type: 'error', message: `Stok buku "${bookData.title}" habis.` });
@@ -87,10 +88,10 @@ export default function CirculationPage() {
           return;
         }
       }
-    } catch (error: any) {
+    } catch (error) {
       setAlertMsg({
         type: 'error',
-        message: error.response?.data?.message || error.message || 'Buku tidak ditemukan.',
+        message: getErrorMessage(error),
       });
     } finally {
       setIsScanning(false);
@@ -136,7 +137,7 @@ export default function CirculationPage() {
     setAlertMsg(null);
 
     returnMutation.mutate(selectedLoanId, {
-      onSuccess: (data: any) => {
+      onSuccess: (data) => {
         if (data?.fine && data.fine > 0) {
           setFineConfirm({
             show: true,
@@ -233,7 +234,7 @@ export default function CirculationPage() {
                     <SelectValue placeholder="Pilih Anggota Perpustakaan..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {members.map((m: any) => (
+                    {members.map((m) => (
                       <SelectItem key={m.member_id || m.id} value={String(m.member_id || m.id)}>
                         {m.name} ({m.member_code || m.id})
                       </SelectItem>
@@ -255,7 +256,7 @@ export default function CirculationPage() {
                     <SelectValue placeholder="Pilih peminjam..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {scannedBook.active_loans.map((loan: any) => (
+                    {scannedBook.active_loans.map((loan) => (
                       <SelectItem key={loan.id} value={loan.id.toString()}>
                         {loan.member?.name || loan.member_name || `Loan #${loan.id}`}
                         {loan.due_date && ` (Jatuh tempo: ${new Date(loan.due_date).toLocaleDateString()})`}
@@ -424,7 +425,7 @@ export default function CirculationPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  todayTransactions.map((tx: any) => (
+                  todayTransactions.map((tx: TodayTransaction) => (
                     <TableRow key={tx.id} className="hover:bg-gray-50/50 transition-colors">
                       <TableCell className="font-semibold text-neutral-800">{tx.member}</TableCell>
                       <TableCell className="text-neutral-700 font-medium max-w-[200px] truncate">{tx.book}</TableCell>

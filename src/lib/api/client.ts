@@ -12,7 +12,7 @@ const apiClient = axios.create({
 // Request interceptor: attach token
 apiClient.interceptors.request.use((config) => {
   const token = localStorage.getItem('access_token');
-  if (token) {
+  if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
@@ -27,9 +27,13 @@ apiClient.interceptors.response.use(
       localStorage.removeItem('user');
       window.location.href = '/login';
     } else if (error.response?.status === 403) {
-      console.error('Akses ditolak:', error.response.data);
+      if (import.meta.env.DEV) {
+        console.error('Akses ditolak:', error.response.data);
+      }
     } else if (error.response?.status === 500) {
-      console.error('Server error:', error.response.data);
+      if (import.meta.env.DEV) {
+        console.error('Server error:', error.response.data);
+      }
     }
     return Promise.reject(error);
   }

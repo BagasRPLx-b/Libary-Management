@@ -44,6 +44,7 @@ export const router = createBrowserRouter([
             ],
           },
           { index: true, element: <Navigate to="/catalog" replace /> },
+          { path: '*', element: <Navigate to="/catalog" replace /> },
         ],
       },
     ],

@@ -4,9 +4,7 @@ import { useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -56,7 +54,6 @@ export default function CatalogPage() {
 
   // Role check dengan lowercase
   const isAdminOrStaff = user?.role?.toLowerCase() === 'admin' || user?.role?.toLowerCase() === 'staff';
-  const isMember = user?.role?.toLowerCase() === 'member';
 
   // Data dari API
   const { data: booksData, isLoading, isError, refetch } = useBooks({
@@ -99,8 +96,22 @@ export default function CatalogPage() {
     if (filterAuthor && filterAuthor !== 'all') params.set('author', filterAuthor);
     if (filterCategory && filterCategory !== 'all') params.set('category', filterCategory);
     setSearchParams(params, { replace: true });
-    setCurrentPage(1);
   }, [debouncedSearch, filterAuthor, filterCategory, setSearchParams]);
+
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    setCurrentPage(1);
+  };
+
+  const handleFilterAuthorChange = (value: string) => {
+    setFilterAuthor(value);
+    setCurrentPage(1);
+  };
+
+  const handleFilterCategoryChange = (value: string) => {
+    setFilterCategory(value);
+    setCurrentPage(1);
+  };
 
   const clearFilters = () => {
     setSearch('');
@@ -271,7 +282,7 @@ export default function CatalogPage() {
             placeholder="Cari judul atau penulis..."
             className="pl-9 rounded-lg bg-gray-50 border-gray-200 h-10 w-full"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
           />
         </div>
 
@@ -280,7 +291,7 @@ export default function CatalogPage() {
           <SearchableSelect
             options={authorOptions}
             value={filterAuthor}
-            onChange={setFilterAuthor}
+            onChange={handleFilterAuthorChange}
             placeholder={isLoadingAuthors ? 'Memuat penulis...' : 'Pilih Penulis'}
             searchPlaceholder="Cari penulis..."
             emptyText="Tidak ada penulis ditemukan"
@@ -290,7 +301,7 @@ export default function CatalogPage() {
 
         {/* Dropdown Kategori */}
         <div className="min-w-[160px]">
-          <Select value={filterCategory} onValueChange={setFilterCategory}>
+          <Select value={filterCategory} onValueChange={handleFilterCategoryChange}>
             <SelectTrigger className="w-full rounded-lg border-gray-200 h-10 bg-gray-50">
               <SelectValue placeholder={isLoadingCategories ? "Memuat kategori..." : "Kategori"} />
             </SelectTrigger>

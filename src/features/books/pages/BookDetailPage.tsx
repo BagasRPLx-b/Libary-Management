@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ArrowLeft, BookOpen, Bookmark, Calendar, Hash, Building, Loader2, BookmarkCheck, ShoppingCart } from 'lucide-react';
+import { ArrowLeft, BookOpen, Bookmark, Calendar, Hash, Building, Loader2, BookmarkCheck } from 'lucide-react';
 import { useState } from 'react';
 import { useBook } from '../hooks/useBooks';
 import { Skeleton } from '@/components/ui/skeleton';

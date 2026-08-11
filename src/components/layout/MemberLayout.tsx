@@ -1,13 +1,11 @@
 // src/components/layout/MemberLayout.tsx
-import { Outlet, Link } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { LogOut, BookOpen, BookCheck, User } from 'lucide-react';
-import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 
 export default function MemberLayout() {
-  const { user, logout } = useAuth();
-  const [showDropdown, setShowDropdown] = useState(false);
+  const { logout } = useAuth();
 
   return (
     <div className="flex h-screen bg-gray-50">
