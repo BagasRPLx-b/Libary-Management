@@ -1,10 +1,11 @@
+// src/features/reports/pages/ReportsPage.tsx
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, parseISO } from 'date-fns';
-import { Search, AlertCircle, Users, BookX, RefreshCw, Clock, Coins, User, Calendar } from 'lucide-react';
+import { Search, AlertCircle, RefreshCw, Clock, Coins, User, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -17,7 +18,23 @@ export default function ReportsPage() {
 
   const { data: overdueLoans = [], isLoading, isError, refetch } = useOverdueLoans(searchTerm);
 
-  const filteredLoans = overdueLoans.filter((loan: any) => {
+  console.log('📊 overdueLoans from hook:', overdueLoans);
+
+  // ✅ Format data untuk tabel
+  const formattedLoans = overdueLoans.map((loan: any) => ({
+    id: loan.id,
+    member: loan.member?.name || 'Unknown',
+    book: loan.book?.title || 'Unknown',
+    due_date: loan.due_date,
+    borrowed_at: loan.borrowed_at,
+    fine_amount: parseFloat(loan.estimated_fine || loan.fine_amount || 0),
+    status: loan.status,
+    days_overdue: loan.days_overdue || 0,
+  }));
+
+  console.log('📋 formattedLoans:', formattedLoans);
+
+  const filteredLoans = formattedLoans.filter((loan: any) => {
     if (dateFilter && loan.due_date && !loan.due_date.startsWith(dateFilter)) return false;
     return true;
   });
@@ -25,7 +42,7 @@ export default function ReportsPage() {
   const totalFine = filteredLoans.reduce((sum: number, loan: any) => sum + (loan.fine_amount || 0), 0);
   const totalOverdue = filteredLoans.length;
 
-  // Mencari member terbanyak meminjam terlambat secara dinamis
+  // Member terbanyak
   const memberCounts: Record<string, number> = {};
   filteredLoans.forEach((loan: any) => {
     if (loan.member) {
@@ -75,8 +92,7 @@ export default function ReportsPage() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* Card 1: Total Overdue */}
-        <Card className="bg-red-50/55 border border-red-100 shadow-subtle-sm rounded-xl overflow-hidden hover:shadow-subtle-md hover:-translate-y-1 transition-all duration-300">
+        <Card className="bg-red-50/55 border border-red-100 rounded-xl overflow-hidden hover:shadow-md hover:-translate-y-1 transition-all duration-300">
           <CardContent className="p-6 flex items-center justify-between">
             <div className="space-y-1">
               <p className="text-xs font-bold text-red-600 uppercase tracking-wider">Total Overdue</p>
@@ -88,8 +104,7 @@ export default function ReportsPage() {
           </CardContent>
         </Card>
 
-        {/* Card 2: Total Denda */}
-        <Card className="bg-yellow-50/55 border border-yellow-100 shadow-subtle-sm rounded-xl overflow-hidden hover:shadow-subtle-md hover:-translate-y-1 transition-all duration-300">
+        <Card className="bg-yellow-50/55 border border-yellow-100 rounded-xl overflow-hidden hover:shadow-md hover:-translate-y-1 transition-all duration-300">
           <CardContent className="p-6 flex items-center justify-between">
             <div className="space-y-1">
               <p className="text-xs font-bold text-yellow-700 uppercase tracking-wider">Total Denda</p>
@@ -101,13 +116,12 @@ export default function ReportsPage() {
           </CardContent>
         </Card>
 
-        {/* Card 3: Member Terbanyak */}
-        <Card className="bg-blue-50/55 border border-blue-100 shadow-subtle-sm rounded-xl overflow-hidden hover:shadow-subtle-md hover:-translate-y-1 transition-all duration-300">
+        <Card className="bg-blue-50/55 border border-blue-100 rounded-xl overflow-hidden hover:shadow-md hover:-translate-y-1 transition-all duration-300">
           <CardContent className="p-6 flex items-center justify-between">
             <div className="space-y-1">
               <p className="text-xs font-bold text-blue-700 uppercase tracking-wider">Member Terbanyak</p>
               <p className="text-lg font-black text-blue-900 truncate max-w-[200px]">
-                {topMemberCount > 0 ? `${topMemberName}` : '-'}
+                {topMemberCount > 0 ? topMemberName : '-'}
               </p>
               {topMemberCount > 0 && <p className="text-[10px] text-blue-600 font-bold">{topMemberCount} buku overdue</p>}
             </div>
@@ -119,7 +133,7 @@ export default function ReportsPage() {
       </div>
 
       {/* Overdue Table */}
-      <Card className="shadow-subtle-md border-gray-100 overflow-hidden">
+      <Card className="shadow-md border-gray-100 overflow-hidden">
         <CardHeader className="bg-gray-50/50 border-b border-gray-100 px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <CardTitle className="text-gray-800 text-lg font-bold flex items-center gap-2">
             📋 Daftar Peminjaman Terlambat
@@ -179,7 +193,7 @@ export default function ReportsPage() {
                   </TableRow>
                 ) : (
                   filteredLoans.map((loan: any) => {
-                    const days = calculateDaysOverdue(loan.due_date);
+                    const days = loan.days_overdue || calculateDaysOverdue(loan.due_date);
                     return (
                       <TableRow key={loan.id} className="hover:bg-gray-50/30 transition-colors">
                         <TableCell className="font-semibold text-neutral-800">{loan.member}</TableCell>
@@ -246,11 +260,15 @@ export default function ReportsPage() {
               </div>
               <div className="grid grid-cols-3 gap-2 border-b border-gray-100 pb-2">
                 <span className="text-neutral-400 font-medium font-bold">Keterlambatan</span>
-                <span className="col-span-2 font-bold text-red-600">{calculateDaysOverdue(selectedLoan.due_date)} hari terlambat</span>
+                <span className="col-span-2 font-bold text-red-600">
+                  {selectedLoan.days_overdue || calculateDaysOverdue(selectedLoan.due_date)} hari terlambat
+                </span>
               </div>
               <div className="bg-red-50 text-red-700 p-4 rounded-xl flex justify-between items-center shadow-inner">
                 <span className="font-bold text-sm">Tagihan Denda:</span>
-                <span className="text-xl font-black">Rp {(selectedLoan.fine_amount || 0).toLocaleString('id-ID')}</span>
+                <span className="text-xl font-black">
+                  Rp {(selectedLoan.fine_amount || 0).toLocaleString('id-ID')}
+                </span>
               </div>
             </div>
           )}

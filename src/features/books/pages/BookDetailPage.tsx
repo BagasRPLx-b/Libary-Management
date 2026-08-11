@@ -4,24 +4,42 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ArrowLeft, BookOpen, Bookmark, Calendar, Hash, Building, Loader2 } from 'lucide-react';
+import { ArrowLeft, BookOpen, Bookmark, Calendar, Hash, Building, Loader2, BookmarkCheck, ShoppingCart } from 'lucide-react';
 import { useState } from 'react';
 import { useBook } from '../hooks/useBooks';
 import { Skeleton } from '@/components/ui/skeleton';
+import { reservationApi } from '@/lib/api/reservations';
+import { getErrorMessage } from '@/lib/error-handler';
 
 export default function BookDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [alert, setAlert] = useState<string | null>(null);
+  const [alert, setAlert] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { data: book, isLoading, isError, refetch } = useBook(Number(id));
   const isMember = user?.role === 'Member';
 
-  const handleBorrow = () => {
-    // TODO: Integrasi dengan API issue book
-    setAlert('Fitur peminjaman akan segera tersedia.');
-    setTimeout(() => setAlert(null), 3000);
+  const handleReserve = async () => {
+    if (!book) return;
+    setIsSubmitting(true);
+    setAlert(null);
+    try {
+      const response = await reservationApi.create({ book_id: book.id });
+      setAlert({
+        type: 'success',
+        message: response.data?.message || 'Reservasi berhasil dibuat (Status: Pending).',
+      });
+      refetch();
+    } catch (error) {
+      setAlert({
+        type: 'error',
+        message: getErrorMessage(error),
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (isLoading) {
@@ -75,8 +93,11 @@ export default function BookDetailPage() {
       </Button>
 
       {alert && (
-        <Alert>
-          <AlertDescription>{alert}</AlertDescription>
+        <Alert variant={alert.type === 'error' ? 'destructive' : 'default'} className="shadow-sm">
+          <AlertDescription className="flex items-center justify-between">
+            <span>{alert.message}</span>
+            <button onClick={() => setAlert(null)} className="text-gray-400 hover:text-gray-600">✕</button>
+          </AlertDescription>
         </Alert>
       )}
 
@@ -141,12 +162,37 @@ export default function BookDetailPage() {
                   <p className="text-sm text-gray-500">Total</p>
                 </div>
                 <div className="pt-4 border-t">
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between text-sm mb-4">
                     <span className="text-gray-500">Dipinjam</span>
                     <span className="font-medium">{book.total_copies - book.available_copies}</span>
                   </div>
                 </div>
               </>
+            )}
+
+            {isMember && (
+              <div className="pt-2">
+                {book.available_copies === 0 ? (
+                  <Button 
+                    className="w-full bg-[#0055FF] hover:bg-blue-700 text-white rounded-lg gap-2 font-semibold"
+                    onClick={handleReserve}
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <BookmarkCheck className="h-4 w-4" />}
+                    Reservasi Buku (Hold)
+                  </Button>
+                ) : (
+                  <Button 
+                    variant="outline"
+                    className="w-full border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg gap-2 font-semibold"
+                    onClick={handleReserve}
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <BookmarkCheck className="h-4 w-4" />}
+                    Coba Reservasi
+                  </Button>
+                )}
+              </div>
             )}
           </CardContent>
         </Card>

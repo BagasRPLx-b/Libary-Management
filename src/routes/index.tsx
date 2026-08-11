@@ -12,6 +12,8 @@ import MembersPage from '@/features/members/pages/MembersPage';
 import ProfilePage from '@/features/members/pages/ProfilePage';
 import ReportsPage from '@/features/reports/pages/ReportsPage';
 import MemberLoansPage from '@/features/members/pages/MemberLoansPage';
+import ActiveLoansPage from '@/features/loans/pages/ActiveLoansPage'; // ✅ Import ActiveLoansPage
+
 
 export const router = createBrowserRouter([
   {
@@ -31,10 +33,12 @@ export const router = createBrowserRouter([
           { path: '/books/:id', element: <BookDetailPage /> },
           { path: '/profile', element: <ProfilePage /> },
           { path: '/my-loans', element: <MemberLoansPage /> },
-          { 
+          {
             element: <RoleRoute allowedRoles={['Admin', 'Staff']} />,
             children: [
               { path: '/circulation', element: <CirculationPage /> },
+              { path: '/active-loans', element: <ActiveLoansPage /> }, // ✅ Tambahkan ini
+
               { path: '/members', element: <MembersPage /> },
               { path: '/reports', element: <ReportsPage /> },
             ],

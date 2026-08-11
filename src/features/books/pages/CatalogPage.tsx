@@ -10,8 +10,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Search, RotateCw, X, Plus, Pencil, Trash2 } from 'lucide-react';
+import { Search, RotateCw, X, Plus, Pencil, Trash2, Eye } from 'lucide-react';
 import { SearchableSelect } from '@/components/ui/searchable-select';
+import { useDebounce } from '@/hooks/useDebounce';
 import {
   useBooks,
   useCategories,
@@ -23,38 +24,8 @@ import {
 } from '@/features/books/hooks/useBooks';
 import { getErrorMessage } from '@/lib/error-handler';
 
-// ─── Skeleton ────────────────────────────────────────────
-function BookCardSkeleton() {
-  return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 space-y-4 animate-pulse">
-      <div className="h-44 bg-gray-100 rounded-lg" />
-      <div className="space-y-2">
-        <div className="h-5 bg-gray-200 rounded w-3/4" />
-        <div className="h-4 bg-gray-200 rounded w-1/2" />
-        <div className="flex gap-2 pt-2">
-          <div className="h-6 bg-gray-200 rounded-full w-16" />
-          <div className="h-6 bg-gray-200 rounded-full w-20" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Empty State ─────────────────────────────────────────
-function EmptyState({ isAdminOrStaff, onAddFirst }: { isAdminOrStaff: boolean; onAddFirst: () => void }) {
-  return (
-    <div className="flex flex-col items-center justify-center py-20 text-center space-y-4 bg-white rounded-xl shadow-sm border border-gray-100 p-8">
-      <span className="text-6xl">📚</span>
-      <h3 className="text-lg font-bold text-gray-800">Belum ada buku di katalog</h3>
-      <p className="text-sm text-neutral-500">Mulai mengisi perpustakaan dengan menambahkan buku baru.</p>
-      {isAdminOrStaff && (
-        <Button onClick={onAddFirst} className="rounded-lg gap-2 mt-2">
-          <Plus className="h-4 w-4" /> Tambah Buku Pertama
-        </Button>
-      )}
-    </div>
-  );
-}
+import { BookCardSkeleton } from '@/features/books/components/BookCardSkeleton';
+import { BookEmptyState } from '@/features/books/components/BookEmptyState';
 
 // ─── Main Component ──────────────────────────────────────
 export default function CatalogPage() {
@@ -63,8 +34,10 @@ export default function CatalogPage() {
 
   // Ambil filter dari URL
   const [search, setSearch] = useState(searchParams.get('search') || '');
+  const debouncedSearch = useDebounce(search, 400);
   const [filterAuthor, setFilterAuthor] = useState(searchParams.get('author') || 'all');
   const [filterCategory, setFilterCategory] = useState(searchParams.get('category') || 'all');
+  const [currentPage, setCurrentPage] = useState(1);
 
   // State untuk modal CRUD
   const [openAddEdit, setOpenAddEdit] = useState(false);
@@ -86,13 +59,18 @@ export default function CatalogPage() {
   const isMember = user?.role?.toLowerCase() === 'member';
 
   // Data dari API
-  const { data: booksRaw, isLoading, isError, refetch } = useBooks({
-    search: search || undefined,
+  const { data: booksData, isLoading, isError, refetch } = useBooks({
+    search: debouncedSearch || undefined,
     author: filterAuthor !== 'all' ? filterAuthor : undefined,
     category_id: filterCategory !== 'all' ? filterCategory : undefined,
+    page: currentPage,
+    per_page: 12,
   });
 
-  const books = Array.isArray(booksRaw) ? booksRaw : [];
+  const books = Array.isArray(booksData) ? booksData : (booksData?.data || []);
+  const totalBooks = !Array.isArray(booksData) && booksData?.total ? booksData.total : books.length;
+  const lastPage = !Array.isArray(booksData) && booksData?.last_page ? booksData.last_page : 1;
+
 
   const { data: categoriesRaw = [], isLoading: isLoadingCategories } = useCategories();
   const { data: authorsRaw = [], isLoading: isLoadingAuthors } = useAuthors();
@@ -117,16 +95,18 @@ export default function CatalogPage() {
   // ─── Update URL saat filter berubah ───────────────────
   useEffect(() => {
     const params = new URLSearchParams();
-    if (search) params.set('search', search);
+    if (debouncedSearch) params.set('search', debouncedSearch);
     if (filterAuthor && filterAuthor !== 'all') params.set('author', filterAuthor);
     if (filterCategory && filterCategory !== 'all') params.set('category', filterCategory);
     setSearchParams(params, { replace: true });
-  }, [search, filterAuthor, filterCategory, setSearchParams]);
+    setCurrentPage(1);
+  }, [debouncedSearch, filterAuthor, filterCategory, setSearchParams]);
 
   const clearFilters = () => {
     setSearch('');
     setFilterAuthor('all');
     setFilterCategory('all');
+    setCurrentPage(1);
   };
 
   const hasActiveFilters = search || filterAuthor !== 'all' || filterCategory !== 'all';
@@ -249,22 +229,24 @@ export default function CatalogPage() {
       )}
 
       {/* ─── HEADER ─── */}
-      <div className="flex flex-wrap gap-4 items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-          <span>📚</span> Catalog Buku
-          {hasActiveFilters && (
-            <span className="text-sm font-normal text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
-              Filter aktif
-            </span>
-          )}
-        </h1>
+      <div className="flex flex-wrap gap-4 items-end justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <span>📚</span> Catalog Buku
+            {hasActiveFilters && (
+              <span className="text-sm font-normal text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+                Filter aktif
+              </span>
+            )}
+          </h1>
+          <p className="text-sm text-gray-500 mt-1">Temukan koleksi buku perpustakaan.</p>
+        </div>
         <div className="flex items-center gap-2">
           {hasActiveFilters && (
             <Button variant="ghost" size="sm" onClick={clearFilters} className="text-gray-500 gap-1">
               <X className="h-4 w-4" /> Hapus Filter
             </Button>
           )}
-          {/* ✅ Tombol CRUD hanya untuk Admin/Staff */}
           {isAdminOrStaff && (
             <Button
               onClick={() => {
@@ -280,7 +262,7 @@ export default function CatalogPage() {
         </div>
       </div>
 
-      {/* ─── SEARCH & FILTER BAR ─── */}
+      {/* ─── SEARCH & FILTER BAR (SAMA UNTUK ADMIN & MEMBER) ─── */}
       <div className="flex flex-wrap gap-3 items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100">
         {/* Search Input */}
         <div className="relative flex-1 min-w-[200px]">
@@ -293,7 +275,7 @@ export default function CatalogPage() {
           />
         </div>
 
-        {/* Searchable Dropdown Penulis */}
+        {/* Dropdown Penulis (Searchable) */}
         <div className="min-w-[180px]">
           <SearchableSelect
             options={authorOptions}
@@ -328,35 +310,48 @@ export default function CatalogPage() {
           {Array.from({ length: 8 }).map((_, i) => <BookCardSkeleton key={i} />)}
         </div>
       ) : books.length === 0 ? (
-        <EmptyState isAdminOrStaff={isAdminOrStaff} onAddFirst={() => { setEditBook(null); resetForm(); setOpenAddEdit(true); }} />
+        <BookEmptyState isAdminOrStaff={isAdminOrStaff} onAddFirst={() => { setEditBook(null); resetForm(); setOpenAddEdit(true); }} />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {books.map((book: Book) => (
             <div key={book.id} className="block group relative">
               <Link to={`/books/${book.id}`} className="block">
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-md hover:-translate-y-1 transition-all duration-300 overflow-hidden flex flex-col h-full">
-                  <div className="h-44 bg-gradient-to-br from-primary-50 to-primary-100 flex items-center justify-center border-b border-gray-50">
-                    <span className="text-4xl group-hover:scale-110 transition-transform duration-300">📖</span>
+                  <div className="h-48 bg-gradient-to-tr from-gray-50 to-gray-200 relative overflow-hidden flex items-center justify-center p-4">
+                    {book.available_copies > 0 ? (
+                      <div className="absolute top-2 right-2 bg-green-100 text-green-700 text-[10px] font-bold px-2 py-1 rounded-md z-10 shadow-sm">
+                        TERSEDIA
+                      </div>
+                    ) : (
+                      <div className="absolute top-2 right-2 bg-amber-100 text-amber-700 text-[10px] font-bold px-2 py-1 rounded-md z-10 shadow-sm">
+                        DIPINJAM
+                      </div>
+                    )}
+                    <div className="w-full h-full max-w-[120px] bg-white rounded shadow-md border border-gray-100 flex items-center justify-center relative z-0">
+                      <span className="text-4xl group-hover:scale-110 transition-transform duration-300">📖</span>
+                    </div>
                   </div>
                   <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
                     <div className="space-y-1">
-                      <h3 className="font-semibold text-neutral-800 group-hover:text-primary-600 transition-colors line-clamp-1">{book.title}</h3>
-                      <p className="text-xs text-neutral-500 line-clamp-1">by {book.author}</p>
+                      <p className="text-[10px] text-[#0055FF] font-bold uppercase tracking-wider">{book.category?.name ?? 'UMUM'}</p>
+                      <h3 className="font-bold text-gray-900 group-hover:text-[#0055FF] transition-colors line-clamp-1 text-base">{book.title}</h3>
+                      <p className="text-sm text-gray-500 line-clamp-1">{book.author}</p>
                     </div>
-                    <div className="flex flex-wrap items-center gap-2 pt-1">
-                      <span className="text-[10px] px-2 py-0.5 bg-primary-50 text-primary-600 rounded-full font-medium">
-                        {book.category?.name ?? '-'}
-                      </span>
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${book.available_copies > 0 ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
-                        {book.available_copies > 0 ? `${book.available_copies} tersedia` : 'Tidak tersedia'}
-                      </span>
+                    <div className="flex items-center justify-between pt-2">
+                      <div className="flex items-center gap-1">
+                        <span className="text-sm text-gray-500">Stok: {book.available_copies}</span>
+                      </div>
+                      {/* ✅ Tombol Detail untuk SEMUA user (Admin & Member) */}
+                      <Button size="sm" variant="outline" className="border-[#0055FF] text-[#0055FF] hover:bg-blue-50">
+                        <Eye className="h-3.5 w-3.5 mr-1" /> Detail
+                      </Button>
                     </div>
                   </div>
                 </div>
               </Link>
-              {/* ✅ Tombol Edit & Delete hanya untuk Admin/Staff */}
+              {/* Tombol Edit & Delete hanya untuk Admin/Staff */}
               {isAdminOrStaff && (
-                <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-white/90 backdrop-blur-sm p-1 rounded-lg border border-gray-100">
+                <div className="absolute top-2 left-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-20 bg-white/90 backdrop-blur-sm p-1 rounded-lg border border-gray-100 shadow-sm">
                   <button
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEditClick(book); }}
                     className="p-1 text-gray-500 hover:text-primary-600 rounded"
@@ -373,6 +368,54 @@ export default function CatalogPage() {
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* ─── PAGINATION ─── */}
+      {books.length > 0 && (
+        <div className="flex items-center justify-between mt-8 text-sm text-gray-500">
+          <span>
+            Menampilkan {((currentPage - 1) * 12) + 1} - {Math.min(currentPage * 12, totalBooks)} dari {totalBooks} buku
+          </span>
+          <div className="flex gap-1.5">
+            <button
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className={`w-8 h-8 flex items-center justify-center rounded border ${currentPage === 1 ? 'border-gray-200 text-gray-300 cursor-not-allowed' : 'border-gray-200 hover:bg-gray-50'}`}
+            >
+              &lt;
+            </button>
+            {Array.from({ length: Math.min(lastPage, 5) }).map((_, i) => {
+              const pageNum = i + 1;
+              return (
+                <button
+                  key={pageNum}
+                  onClick={() => setCurrentPage(pageNum)}
+                  className={`w-8 h-8 flex items-center justify-center rounded ${currentPage === pageNum ? 'bg-[#0055FF] text-white font-medium' : 'border border-gray-200 hover:bg-gray-50'}`}
+                >
+                  {pageNum}
+                </button>
+              );
+            })}
+            {lastPage > 5 && (
+              <>
+                <span className="w-8 h-8 flex items-center justify-center">...</span>
+                <button
+                  onClick={() => setCurrentPage(lastPage)}
+                  className={`w-8 h-8 flex items-center justify-center rounded border border-gray-200 hover:bg-gray-50`}
+                >
+                  {lastPage}
+                </button>
+              </>
+            )}
+            <button
+              onClick={() => setCurrentPage(p => Math.min(lastPage, p + 1))}
+              disabled={currentPage === lastPage}
+              className={`w-8 h-8 flex items-center justify-center rounded border ${currentPage === lastPage ? 'border-gray-200 text-gray-300 cursor-not-allowed' : 'border-gray-200 hover:bg-gray-50'}`}
+            >
+              &gt;
+            </button>
+          </div>
         </div>
       )}
 

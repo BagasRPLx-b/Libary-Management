@@ -12,6 +12,7 @@ import { Pencil, Trash2, Search, Users, ChevronLeft, ChevronRight } from 'lucide
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useMembers, useUpdateMember, useDeleteMember, type Member } from '../hooks/useMember';
 import apiClient from '@/lib/api/client';
+import { getErrorMessage } from '@/lib/error-handler';
 
 export default function MembersPage() {
   const [search, setSearch] = useState('');
@@ -136,7 +137,7 @@ export default function MembersPage() {
         if (paginatedMembers.length === 1 && currentPage > 1) setCurrentPage((prev) => prev - 1);
       },
       onError: (err: any) => {
-        setAlert({ type: 'error', message: err.response?.data?.message || 'Gagal menghapus member.' });
+        setAlert({ type: 'error', message: getErrorMessage(err) });
       },
     });
   };

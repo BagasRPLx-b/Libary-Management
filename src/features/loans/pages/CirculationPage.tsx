@@ -1,6 +1,4 @@
-// src/features/loans/pages/CirculationPage.tsx
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -16,61 +14,10 @@ import { useMembers } from '@/features/members/hooks/useMember';
 import apiClient from '@/lib/api/client';
 import type { Book } from '@/features/books/hooks/useBooks';
 import { getErrorMessage } from '@/lib/error-handler';
-
-// ─── GET today transactions ──────────────────────────────
-const fetchTodayTransactions = async () => {
-  const today = new Date().toISOString().split('T')[0];
-  try {
-    const response = await apiClient.get('/transactions', { params: { date: today } });
-    const data = response.data;
-
-    if (data && typeof data === 'object') {
-      // Gabungkan issued + returned
-      const allTransactions = [
-        ...(Array.isArray(data.issued) ? data.issued : []),
-        ...(Array.isArray(data.returned) ? data.returned : []),
-      ];
-
-      // ✅ Hapus duplikat berdasarkan ID
-      const uniqueTransactions = allTransactions.filter(
-        (item, index, self) =>
-          index === self.findIndex((t) => t.id === item.id)
-      );
-
-      // ✅ SORT: Urutkan dari yang terbaru
-      const sortedTransactions = uniqueTransactions.sort((a, b) => {
-        const dateA = new Date(a.created_at || a.borrowed_at).getTime();
-        const dateB = new Date(b.created_at || b.borrowed_at).getTime();
-        return dateB - dateA;
-      });
-
-      // ✅ Format untuk tabel
-      return sortedTransactions.map((item: any) => ({
-        id: item.id,
-        member: item.member?.name || 'Unknown',
-        book: item.book?.title || 'Unknown',
-        type: item.status === 'active' ? 'Issue' : 'Return',
-        time: item.created_at
-          ? new Date(item.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
-          : '-',
-        status: item.status,
-      }));
-    }
-
-    if (Array.isArray(data)) return data;
-    if (data?.data && Array.isArray(data.data)) return data.data;
-
-    return [];
-  } catch (error) {
-    console.error('❌ Error fetching transactions:', error);
-    return [];
-  }
-};
+import { useTodayTransactions, useIssueBook, useReturnBook } from '@/features/loans/hooks/useCirculation';
 
 // ─── Component ────────────────────────────────────────────
 export default function CirculationPage() {
-  const queryClient = useQueryClient();
-
   // ─── State ──────────────────────────────────────────────
   const [barcode, setBarcode] = useState('');
   const [mode, setMode] = useState<'issue' | 'return'>('issue');
@@ -81,37 +28,12 @@ export default function CirculationPage() {
   const [fineConfirm, setFineConfirm] = useState<{ show: boolean; message: string; fine: number } | null>(null);
   const [selectedLoanId, setSelectedLoanId] = useState<number | null>(null);
 
-  // ─── React Query ────────────────────────────────────────
-  const { data: todayTransactions = [], isLoading: isLoadingTx, isError: isErrorTx, refetch: refetchTx } = useQuery({
-    queryKey: ['transactions', 'today'],
-    queryFn: fetchTodayTransactions,
-    staleTime: 1000 * 60 * 5,
-  });
-
+  // ─── Custom Hooks ───────────────────────────────────────
+  const { data: todayTransactions = [], isLoading: isLoadingTx, isError: isErrorTx, refetch: refetchTx } = useTodayTransactions();
   const { data: members = [] } = useMembers();
 
-  // ─── Mutations ──────────────────────────────────────────
-  const issueMutation = useMutation({
-    mutationFn: async (data: { book_id: number; member_id: number }) => {
-      const response = await apiClient.post('/loans/issue', data);
-      return response.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['books'] });
-    },
-  });
-
-  const returnMutation = useMutation({
-    mutationFn: async (loanId: number) => {
-      const response = await apiClient.post(`/loans/${loanId}/return`);
-      return response.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['books'] });
-    },
-  });
+  const issueMutation = useIssueBook();
+  const returnMutation = useReturnBook();
 
   // ─── Handlers ────────────────────────────────────────────
 

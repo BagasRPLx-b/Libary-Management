@@ -17,7 +17,7 @@ export default defineConfig({
   server: {
     proxy: {
       '^/api': {
-        target: 'https://ebook-rrp-consumer-word.trycloudflare.com',
+        target: 'https://barrier-generation-queensland-session.trycloudflare.com',
         changeOrigin: true,
         secure: true,
         // Rewrite /api/... to /api/v1/...

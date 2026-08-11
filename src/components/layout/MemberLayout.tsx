@@ -14,11 +14,14 @@ export default function MemberLayout() {
       {/* ===== SIDEBAR KIRI ===== */}
       <aside className="w-[72px] md:w-[220px] bg-white border-r border-gray-200 flex flex-col h-screen sticky top-0 shadow-sm z-30">
         {/* Logo */}
-        <div className="p-4 md:p-6 border-b border-gray-100">
-          <Link to="/catalog" className="flex items-center gap-2">
-            <span className="text-2xl">📚</span>
-            <span className="hidden md:inline text-xl font-bold text-gray-800">Perpustakaan</span>
-          </Link>
+        <div className="p-4 md:p-6 border-b border-gray-100 flex items-center gap-2">
+          <div className="w-8 h-8 bg-[#0055FF] rounded-lg flex items-center justify-center flex-shrink-0">
+            <BookOpen className="text-white h-5 w-5" />
+          </div>
+          <div className="hidden md:flex flex-col">
+            <span className="text-lg font-bold text-[#0055FF] leading-tight tracking-tight">LibConnect</span>
+            <span className="text-[10px] text-gray-500 uppercase tracking-widest font-semibold leading-none mt-0.5">Management System</span>
+          </div>
         </div>
 
         {/* Menu */}
@@ -28,8 +31,8 @@ export default function MemberLayout() {
             className={({ isActive }) =>
               `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
                 isActive 
-                  ? 'bg-primary-50 text-primary-700' 
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  ? 'bg-blue-50 text-[#0055FF] border-l-4 border-[#0055FF]' 
+                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 border-l-4 border-transparent'
               }`
             }
           >
@@ -42,8 +45,8 @@ export default function MemberLayout() {
             className={({ isActive }) =>
               `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
                 isActive 
-                  ? 'bg-primary-50 text-primary-700' 
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  ? 'bg-blue-50 text-[#0055FF] border-l-4 border-[#0055FF]' 
+                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 border-l-4 border-transparent'
               }`
             }
           >
@@ -56,8 +59,8 @@ export default function MemberLayout() {
             className={({ isActive }) =>
               `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
                 isActive 
-                  ? 'bg-primary-50 text-primary-700' 
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  ? 'bg-blue-50 text-[#0055FF] border-l-4 border-[#0055FF]' 
+                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 border-l-4 border-transparent'
               }`
             }
           >
@@ -80,48 +83,8 @@ export default function MemberLayout() {
 
       {/* ===== KONTEN UTAMA ===== */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* 👇 NAVBAR SEDERHANA - Hanya Logo + User */}
-        <header className="bg-white border-b border-gray-200 px-4 md:px-6 py-3 sticky top-0 z-20 shadow-sm">
-          <div className="flex items-center justify-between">
-            {/* Logo kecil di navbar (opsional) */}
-            <div className="flex items-center gap-2">
-              <span className="text-xl">📚</span>
-              <span className="text-sm font-semibold text-gray-600 hidden sm:inline">
-                Perpustakaan Digital
-              </span>
-            </div>
-
-            {/* User Info */}
-            <div className="relative">
-              <button
-                onClick={() => setShowDropdown(!showDropdown)}
-                className="flex items-center gap-2 hover:bg-gray-50 p-1.5 rounded-lg transition-all"
-              >
-                <div className="w-8 h-8 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-bold text-sm">
-                  {user?.name?.charAt(0).toUpperCase() || 'U'}
-                </div>
-                <span className="text-sm font-medium text-gray-700 hidden sm:inline">
-                  {user?.name}
-                </span>
-              </button>
-
-              {showDropdown && (
-                <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-100 rounded-lg shadow-lg py-1 z-50">
-                  <button
-                    onClick={() => {
-                      setShowDropdown(false);
-                      logout();
-                    }}
-                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
-                  >
-                    <LogOut className="h-4 w-4" />
-                    <span>Logout</span>
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </header>
+        {/* Note: Header with Search and Profile is moved to individual pages based on the design */}
+        {/* We just keep an empty invisible spacer or remove it, but let's keep a tiny top padding instead */}
 
         {/* Main Content */}
         <main className="flex-1 overflow-y-auto p-4 md:p-6 max-w-7xl mx-auto w-full">

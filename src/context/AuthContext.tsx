@@ -41,16 +41,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return null;
   });
 
-  // Debug saat mount
-  useEffect(() => {
-    console.log('🔵 AuthContext mounted');
-    console.log('🔵 Token from localStorage:', token);
-    console.log('🔵 User from localStorage:', user);
-    console.log('🔵 isAuthenticated:', !!token && !!user);
-  }, []);
-
   const login = (userData: User, accessToken: string) => {
-    console.log('🔵 login() called');
     setUser(userData);
     setToken(accessToken);
     localStorage.setItem('access_token', accessToken);
@@ -60,8 +51,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = async () => {
     try {
       await apiClient.post('/logout');
-    } catch (error) {
-      console.error('Logout API error:', error);
+    } catch {
+      // Ignore logout API error
     } finally {
       setUser(null);
       setToken(null);
@@ -71,8 +62,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const isAuthenticated = !!token && !!user;
-
-  console.log('🟢 AuthContext render - isAuthenticated:', isAuthenticated);
 
   return (
     <AuthContext.Provider value={{ user, token, login, logout, isAuthenticated }}>

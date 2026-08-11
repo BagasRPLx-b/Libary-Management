@@ -2,30 +2,32 @@
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
-import { 
-  BookOpen, 
-  Repeat, 
-  Users, 
-  BarChart3, 
+import {
+  BookOpen,
+  Repeat,
+  Users,
+  BarChart3,
   LogOut,
   User,
   BookCheck
 } from 'lucide-react';
 
 const menuItems = [
-  { to: '/catalog',      label: 'Katalog',        icon: BookOpen,  roles: ['Admin', 'Staff', 'Member'] },
-  { to: '/circulation',  label: 'Circulation',    icon: Repeat,    roles: ['Admin', 'Staff'] },
-  { to: '/members',      label: 'Members',        icon: Users,     roles: ['Admin', 'Staff'] },
-  { to: '/reports',      label: 'Reports',        icon: BarChart3, roles: ['Admin'] },
+  { to: '/catalog', label: 'Katalog', icon: BookOpen, roles: ['Admin', 'Staff', 'Member'] },
+  { to: '/circulation', label: 'Circulation', icon: Repeat, roles: ['Admin', 'Staff'] },
+  { to: '/active-loans', label: 'Peminjaman Aktif', icon: BookCheck, roles: ['Admin', 'Staff'] }, // ✅ Tambahkan
+
+  { to: '/members', label: 'Members', icon: Users, roles: ['Admin', 'Staff'] },
+  { to: '/reports', label: 'Reports', icon: BarChart3, roles: ['Admin'] },
   // 👇 TAMBAHKAN UNTUK MEMBER
-  { to: '/my-loans',     label: 'Peminjaman Saya', icon: BookCheck, roles: ['Member'] },
-  { to: '/profile',      label: 'Profil',         icon: User,      roles: ['Member'] },
+  { to: '/my-loans', label: 'Peminjaman Saya', icon: BookCheck, roles: ['Member'] },
+  { to: '/profile', label: 'Profil', icon: User, roles: ['Member'] },
 ];
 
 export default function Sidebar() {
   const { user, logout } = useAuth();
 
-  const visibleMenu = menuItems.filter(item => 
+  const visibleMenu = menuItems.filter(item =>
     item.roles.includes(user?.role ?? '')
   );
 
@@ -45,10 +47,9 @@ export default function Sidebar() {
             key={item.to}
             to={item.to}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
-                isActive 
-                  ? 'bg-white/10 text-white shadow-sm font-semibold' 
-                  : 'text-white/70 hover:text-white hover:bg-white/5'
+              `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${isActive
+                ? 'bg-white/10 text-white shadow-sm font-semibold'
+                : 'text-white/70 hover:text-white hover:bg-white/5'
               } justify-center md:justify-start`
             }
             title={item.label}
@@ -61,8 +62,8 @@ export default function Sidebar() {
 
       {/* Logout button */}
       <div className="p-3 border-t border-white/10">
-        <Button 
-          variant="ghost" 
+        <Button
+          variant="ghost"
           className="w-full justify-center md:justify-start text-white/70 hover:text-white hover:bg-white/10 transition-colors"
           onClick={logout}
           title="Logout"

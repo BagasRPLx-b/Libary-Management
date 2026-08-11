@@ -42,7 +42,6 @@ export const useMembers = (search?: string) => {
         };
       });
 
-      console.log('📡 Members:', members);
       return members;
     },
     staleTime: 1000 * 60 * 5,

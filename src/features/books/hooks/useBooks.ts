@@ -1,3 +1,4 @@
+// src/features/books/hooks/useBooks.ts
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { bookApi, categoryApi, authorApi } from '@/lib/api/books';
 
@@ -24,14 +25,23 @@ export interface Category {
   slug: string;
 }
 
+export interface BooksResponse {
+  data: Book[];
+  current_page: number;
+  last_page: number;
+  per_page: number;
+  total: number;
+}
+
 interface BookParams {
   search?: string;
   author?: string;
   category_id?: string;
   per_page?: number;
+  page?: number;
 }
 
-// ─── Helper: Extract Data ────────────────────────────────
+// ─── Helper: Extract array ─────────────────────────────────
 function extractData<T>(data: any): T[] {
   if (Array.isArray(data)) return data;
   if (data && typeof data === 'object') {
@@ -48,8 +58,12 @@ export const useCategories = () => {
   return useQuery({
     queryKey: ['categories'],
     queryFn: async (): Promise<Category[]> => {
-      const response = await categoryApi.getAll();
-      return extractData<Category>(response.data);
+      try {
+        const response = await categoryApi.getAll();
+        return extractData<Category>(response.data);
+      } catch {
+        return [];
+      }
     },
     staleTime: 1000 * 60 * 5,
     retry: 1,
@@ -61,8 +75,12 @@ export const useAuthors = () => {
   return useQuery({
     queryKey: ['authors'],
     queryFn: async (): Promise<string[]> => {
-      const response = await authorApi.getAll();
-      return extractData<string>(response.data);
+      try {
+        const response = await authorApi.getAll();
+        return extractData<string>(response.data);
+      } catch {
+        return [];
+      }
     },
     staleTime: 1000 * 60 * 5,
     retry: 1,
@@ -73,9 +91,39 @@ export const useAuthors = () => {
 export const useBooks = (params?: BookParams) => {
   return useQuery({
     queryKey: ['books', params],
-    queryFn: async (): Promise<Book[]> => {
+    queryFn: async (): Promise<BooksResponse | Book[]> => {
       const response = await bookApi.getAll(params);
-      return extractData<Book>(response.data);
+      const data = response.data;
+      
+      // Jika response berbentuk pagination
+      if (data && typeof data === 'object' && 'data' in data && Array.isArray(data.data)) {
+        return {
+          data: data.data,
+          current_page: data.current_page || 1,
+          last_page: data.last_page || 1,
+          per_page: data.per_page || 12,
+          total: data.total || 0,
+        };
+      }
+      
+      // Jika response adalah array langsung
+      if (Array.isArray(data)) {
+        return {
+          data: data,
+          current_page: 1,
+          last_page: 1,
+          per_page: data.length,
+          total: data.length,
+        };
+      }
+      
+      return {
+        data: [],
+        current_page: 1,
+        last_page: 1,
+        per_page: 12,
+        total: 0,
+      };
     },
     staleTime: 1000 * 60 * 5,
     retry: 1,
@@ -100,6 +148,7 @@ export const useBook = (id: number) => {
 // ─── POST /books ─────────────────────────────────────────
 export const useCreateBook = () => {
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: async (newBook: any) => {
       const response = await bookApi.create(newBook);
@@ -116,6 +165,7 @@ export const useCreateBook = () => {
 // ─── PUT /books/:id ──────────────────────────────────────
 export const useUpdateBook = () => {
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: async ({ id, ...updateData }: any) => {
       const response = await bookApi.update(id, updateData);
@@ -132,6 +182,7 @@ export const useUpdateBook = () => {
 // ─── DELETE /books/:id ───────────────────────────────────
 export const useDeleteBook = () => {
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: async (id: number) => {
       await bookApi.delete(id);
