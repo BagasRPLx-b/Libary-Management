@@ -1,3 +1,4 @@
+// src/lib/api/reports.ts
 import apiClient from './client';
 import type { OverdueLoan, OverdueResponse } from '@/types';
 
@@ -14,5 +15,11 @@ export const reportApi = {
       return data.data;
     }
     return [];
+  },
+
+  // ✅ TAMBAHKAN INI
+  getMemberPenalty: async (params?: { search?: string; page?: number; per_page?: number }) => {
+    const response = await apiClient.get('/reports/member-penalty', { params });
+    return response.data;
   },
 };

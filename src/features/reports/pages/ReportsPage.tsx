@@ -19,14 +19,15 @@ export default function ReportsPage() {
 
   const { data: overdueLoans = [], isLoading, isError, refetch } = useOverdueLoans(searchTerm);
 
-  // ✅ Format data untuk tabel
+  // ✅ Format data untuk tabel - hanya estimasi denda
   const formattedLoans = overdueLoans.map((loan: OverdueLoan) => ({
     id: loan.id,
     member: loan.member?.name || 'Unknown',
     book: loan.book?.title || 'Unknown',
     due_date: loan.due_date,
     borrowed_at: loan.borrowed_at,
-    fine_amount: parseFloat(String(loan.estimated_fine ?? loan.fine_amount ?? 0)),
+    // ✅ Hanya gunakan estimated_fine, karena di laporan overdue semua denda adalah estimasi
+    fine_amount: parseFloat(String(loan.estimated_fine ?? 0)),
     status: loan.status,
     days_overdue: loan.days_overdue || 0,
   }));
@@ -36,7 +37,11 @@ export default function ReportsPage() {
     return true;
   });
 
-  const totalFine = filteredLoans.reduce((sum: number, loan) => sum + (loan.fine_amount || 0), 0);
+  // ✅ Total estimasi denda (semua loan di laporan overdue adalah estimasi)
+  const totalEstimatedFine = filteredLoans.reduce((sum, loan) => {
+    return sum + (loan.fine_amount || 0);
+  }, 0);
+
   const totalOverdue = filteredLoans.length;
 
   // Member terbanyak
@@ -87,7 +92,7 @@ export default function ReportsPage() {
         </Alert>
       )}
 
-      {/* Summary Cards */}
+      {/* ─── SUMMARY CARDS ─── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         <Card className="bg-red-50/55 border border-red-100 rounded-xl overflow-hidden hover:shadow-md hover:-translate-y-1 transition-all duration-300">
           <CardContent className="p-6 flex items-center justify-between">
@@ -104,8 +109,11 @@ export default function ReportsPage() {
         <Card className="bg-yellow-50/55 border border-yellow-100 rounded-xl overflow-hidden hover:shadow-md hover:-translate-y-1 transition-all duration-300">
           <CardContent className="p-6 flex items-center justify-between">
             <div className="space-y-1">
-              <p className="text-xs font-bold text-yellow-700 uppercase tracking-wider">Total Denda</p>
-              <p className="text-2xl font-black text-yellow-800">Rp {totalFine.toLocaleString('id-ID')}</p>
+              <p className="text-xs font-bold text-yellow-700 uppercase tracking-wider">Estimasi Denda</p>
+              <p className="text-2xl font-black text-yellow-800">
+                Rp {totalEstimatedFine.toLocaleString('id-ID')}
+              </p>
+              <p className="text-[10px] text-yellow-600">*Belum final, menunggu pengembalian</p>
             </div>
             <div className="p-3 bg-yellow-100 text-yellow-700 rounded-xl">
               <Coins className="h-6 w-6" />
@@ -129,7 +137,7 @@ export default function ReportsPage() {
         </Card>
       </div>
 
-      {/* Overdue Table */}
+      {/* ─── OVERDUE TABLE ─── */}
       <Card className="shadow-md border-gray-100 overflow-hidden">
         <CardHeader className="bg-gray-50/50 border-b border-gray-100 px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <CardTitle className="text-gray-800 text-lg font-bold flex items-center gap-2">
@@ -166,7 +174,7 @@ export default function ReportsPage() {
                   <TableHead className="font-semibold text-neutral-600">Buku</TableHead>
                   <TableHead className="font-semibold text-neutral-600">Batas Kembali</TableHead>
                   <TableHead className="font-semibold text-neutral-600">Keterlambatan</TableHead>
-                  <TableHead className="font-semibold text-neutral-600">Denda</TableHead>
+                  <TableHead className="font-semibold text-neutral-600">Estimasi Denda</TableHead>
                   <TableHead className="font-semibold text-neutral-600 text-right">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
@@ -201,7 +209,7 @@ export default function ReportsPage() {
                             <AlertCircle className="h-3 w-3" /> {days} hari
                           </span>
                         </TableCell>
-                        <TableCell className="font-bold text-red-600">
+                        <TableCell className="font-bold text-yellow-600">
                           Rp {(loan.fine_amount || 0).toLocaleString('id-ID')}
                         </TableCell>
                         <TableCell className="text-right">
@@ -224,10 +232,11 @@ export default function ReportsPage() {
 
           <div className="flex justify-end p-6 border-t border-gray-100 bg-gray-50/20">
             <div className="text-right">
-              <p className="text-xs text-neutral-500 font-semibold uppercase tracking-wider">Total Akumulasi Denda</p>
-              <p className="text-2xl font-black text-red-600">
-                Rp {totalFine.toLocaleString('id-ID')}
+              <p className="text-xs text-neutral-500 font-semibold uppercase tracking-wider">Total Estimasi Denda</p>
+              <p className="text-2xl font-black text-yellow-600">
+                Rp {totalEstimatedFine.toLocaleString('id-ID')}
               </p>
+              <p className="text-[10px] text-gray-400">*Belum final, menunggu pengembalian</p>
             </div>
           </div>
         </CardContent>
@@ -261,12 +270,13 @@ export default function ReportsPage() {
                   {selectedLoan.days_overdue || calculateDaysOverdue(selectedLoan.due_date)} hari terlambat
                 </span>
               </div>
-              <div className="bg-red-50 text-red-700 p-4 rounded-xl flex justify-between items-center shadow-inner">
-                <span className="font-bold text-sm">Tagihan Denda:</span>
+              <div className="bg-yellow-50 text-yellow-800 p-4 rounded-xl flex justify-between items-center shadow-inner border border-yellow-200">
+                <span className="font-bold text-sm">Estimasi Denda:</span>
                 <span className="text-xl font-black">
                   Rp {(selectedLoan.fine_amount || 0).toLocaleString('id-ID')}
                 </span>
               </div>
+              <p className="text-[10px] text-yellow-600 text-right">*Belum final, akan dihitung saat buku dikembalikan</p>
             </div>
           )}
           <DialogFooter>

@@ -5,11 +5,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
-  BookOpen, CheckCircle, Download, Eye, Info
+  BookOpen, CheckCircle, Download, Eye, Info, AlertCircle
 } from 'lucide-react';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { id } from 'date-fns/locale';
-import { useMyActiveLoans, useMyLoanHistory } from '../hooks/useProfile';
+import { useMyLoans, useMyLoanHistory } from '../hooks/useProfile';
 import { Progress } from '@/components/ui/progress';
 import MemberPageHeader from '@/components/layout/MemberPageHeader';
 
@@ -32,11 +32,18 @@ interface Loan {
   created_at?: string;
   status: 'active' | 'returned' | 'overdue';
   fine_amount?: number;
+  estimated_fine?: number;
 }
 
 export default function MemberLoansPage() {
-  const { data: activeLoans = [], isLoading: isLoadingActive, isError: isErrorActive, refetch: refetchActive } = useMyActiveLoans();
+  // ✅ Ambil SEMUA loan (tanpa filter status)
+  const { data: allLoans = [], isLoading: isLoadingLoans, isError: isErrorLoans, refetch: refetchLoans } = useMyLoans();
   const { data: loanHistory = [], isLoading: isLoadingHistory, isError: isErrorHistory, refetch: refetchHistory } = useMyLoanHistory();
+
+  // ✅ Filter untuk "Sedang Dipinjam" = active + overdue
+  const currentLoans = allLoans.filter(
+    (loan: Loan) => loan.status === 'active' || loan.status === 'overdue'
+  );
 
   // ─── Pagination State ───────────────────────────────────
   const [historyPage, setHistoryPage] = useState(1);
@@ -45,7 +52,7 @@ export default function MemberLoansPage() {
   const totalHistoryPages = Math.ceil(totalHistoryItems / itemsPerPage);
   const paginatedHistory = loanHistory.slice((historyPage - 1) * itemsPerPage, historyPage * itemsPerPage);
 
-  const totalActive = activeLoans.length;
+  const totalActive = currentLoans.length;
   const maxLoans = 5;
 
   // ─── Format tanggal ──────────────────────────────────────
@@ -80,6 +87,17 @@ export default function MemberLoansPage() {
     }
   };
 
+  const getStatusBadge = (status: string, dueDate?: string) => {
+    const isOverdue = status === 'overdue' || (status === 'active' && getDaysLeft(dueDate) < 0);
+    
+    if (isOverdue) {
+      return <Badge className="bg-red-50 text-red-600 border-red-200 font-medium">⚠️ Terlambat</Badge>;
+    }
+    if (status === 'returned') {
+      return <Badge className="bg-gray-50 text-gray-600 border-gray-200 font-medium">✅ Selesai</Badge>;
+    }
+    return <Badge className="bg-blue-50 text-[#0055FF] border-blue-200 font-medium">📖 Dipinjam</Badge>;
+  };
 
   // ─── Render ──────────────────────────────────────────────
   return (
@@ -98,11 +116,11 @@ export default function MemberLoansPage() {
       </div>
 
       {/* ─── ERROR STATE ─── */}
-      {isErrorActive && (
+      {(isErrorLoans || isErrorHistory) && (
         <Alert variant="destructive" className="border-red-200 bg-red-50">
           <AlertDescription className="flex items-center justify-between">
             <span className="text-red-800">Gagal memuat data peminjaman.</span>
-            <Button variant="outline" size="sm" onClick={() => refetchActive()} className="border-red-300 hover:bg-red-100">
+            <Button variant="outline" size="sm" onClick={() => { refetchLoans(); refetchHistory(); }} className="border-red-300 hover:bg-red-100">
               Coba Lagi
             </Button>
           </AlertDescription>
@@ -115,7 +133,7 @@ export default function MemberLoansPage() {
           <BookOpen className="h-5 w-5 text-[#0055FF]" /> Sedang Dipinjam
         </h2>
 
-        {isLoadingActive ? (
+        {isLoadingLoans ? (
           <div className="flex gap-4 overflow-x-auto pb-4">
             {Array.from({ length: 2 }).map((_, i) => (
               <div key={i} className="bg-white rounded-2xl p-5 border border-gray-100 min-w-[300px]">
@@ -125,7 +143,7 @@ export default function MemberLoansPage() {
               </div>
             ))}
           </div>
-        ) : activeLoans.length === 0 ? (
+        ) : currentLoans.length === 0 ? (
           <div className="bg-white rounded-2xl p-10 border border-gray-200 text-center shadow-sm">
             <div className="w-16 h-16 rounded-full bg-gray-50 flex items-center justify-center mx-auto mb-3">
               <BookOpen className="h-8 w-8 text-gray-300" />
@@ -135,17 +153,18 @@ export default function MemberLoansPage() {
           </div>
         ) : (
           <div className="flex gap-6 overflow-x-auto pb-6 scrollbar-hide">
-            {activeLoans.map((loan: Loan) => {
+            {currentLoans.map((loan: Loan) => {
               const daysLeft = getDaysLeft(loan.due_date);
               const isOverdue = loan.status === 'overdue' || daysLeft < 0;
               const progressPercent = Math.max(0, Math.min(100, ((14 - Math.max(0, daysLeft)) / 14) * 100));
+              const estimatedFine = loan.estimated_fine || 0;
 
               return (
                 <div key={loan.id} className={`bg-white rounded-xl p-5 border shadow-sm min-w-[380px] w-[380px] flex gap-4 relative overflow-hidden ${isOverdue ? 'border-red-200 bg-red-50/10' : 'border-gray-200 hover:border-blue-200'} transition-all duration-300 hover:shadow-md`}>
                   {/* Status Badge */}
                   <div className="absolute top-4 right-4">
                     {isOverdue ? (
-                      <Badge className="bg-red-50 text-red-600 border-red-200 font-medium text-[10px]">Terlambat</Badge>
+                      <Badge className="bg-red-50 text-red-600 border-red-200 font-medium text-[10px]">⚠️ Terlambat</Badge>
                     ) : (
                       <Badge className="bg-blue-50 text-[#0055FF] border-blue-200 font-medium text-[10px]">Sedang Dipinjam</Badge>
                     )}
@@ -186,7 +205,7 @@ export default function MemberLoansPage() {
                       <div className="pt-1">
                         <div className="flex justify-between items-center mb-1.5">
                           <span className={`text-xs font-bold ${isOverdue ? 'text-red-600' : 'text-[#0055FF]'}`}>
-                            {isOverdue ? 'Terlambat' : `${daysLeft} Hari Lagi`}
+                            {isOverdue ? `Terlambat ${Math.abs(daysLeft)} hari` : `${daysLeft} Hari Lagi`}
                           </span>
                         </div>
                         <Progress 
@@ -195,10 +214,13 @@ export default function MemberLoansPage() {
                         />
                       </div>
 
-                      {loan.fine_amount && loan.fine_amount > 0 && (
-                        <div className="mt-1 flex items-center justify-between">
-                          <span className="text-[10px] text-red-500 font-medium">Status Denda</span>
-                          <span className="text-xs font-bold text-red-600">Rp {loan.fine_amount.toLocaleString('id-ID')}</span>
+                      {/* ✅ Tampilkan estimasi denda jika overdue */}
+                      {isOverdue && estimatedFine > 0 && (
+                        <div className="mt-1 flex items-center justify-between bg-yellow-50 p-2 rounded-lg border border-yellow-200">
+                          <span className="text-[10px] text-yellow-700 font-medium flex items-center gap-1">
+                            <AlertCircle className="h-3 w-3" /> Estimasi Denda
+                          </span>
+                          <span className="text-xs font-bold text-yellow-800">Rp {estimatedFine.toLocaleString('id-ID')}</span>
                         </div>
                       )}
                     </div>
@@ -218,18 +240,6 @@ export default function MemberLoansPage() {
             Unduh Laporan <Download className="h-4 w-4" />
           </Button>
         </div>
-        {isErrorHistory && (
-          <div className="p-6">
-            <Alert variant="destructive">
-              <AlertDescription className="flex items-center justify-between">
-                <span>Gagal memuat riwayat peminjaman.</span>
-                <Button variant="outline" size="sm" onClick={() => refetchHistory()}>
-                  Coba Lagi
-                </Button>
-              </AlertDescription>
-            </Alert>
-          </div>
-        )}
 
         <div className="overflow-x-auto">
           <table className="w-full text-sm">

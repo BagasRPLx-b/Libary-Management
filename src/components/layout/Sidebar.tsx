@@ -9,6 +9,7 @@ import {
   BarChart3,
   LogOut,
   User,
+  Coins,
   BookCheck
 } from 'lucide-react';
 
@@ -19,7 +20,7 @@ const menuItems = [
 
   { to: '/members', label: 'Members', icon: Users, roles: ['Admin', 'Staff'] },
   { to: '/reports', label: 'Reports', icon: BarChart3, roles: ['Admin'] },
-  // 👇 TAMBAHKAN UNTUK MEMBER
+  { to: '/member-penalty-summary', label: 'Member Penalty', icon: Coins, roles: ['Admin', 'Staff'] }, // ✅ Tambahkan
   { to: '/my-loans', label: 'Peminjaman Saya', icon: BookCheck, roles: ['Member'] },
   { to: '/profile', label: 'Profil', icon: User, roles: ['Member'] },
 ];

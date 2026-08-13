@@ -13,6 +13,7 @@ import ProfilePage from '@/features/members/pages/ProfilePage';
 import ReportsPage from '@/features/reports/pages/ReportsPage';
 import MemberLoansPage from '@/features/members/pages/MemberLoansPage';
 import ActiveLoansPage from '@/features/loans/pages/ActiveLoansPage'; // ✅ Import ActiveLoansPage
+import MemberPenaltySummary from '@/features/reports/pages/MemberPenaltySummary';
 
 
 export const router = createBrowserRouter([
@@ -41,6 +42,7 @@ export const router = createBrowserRouter([
 
               { path: '/members', element: <MembersPage /> },
               { path: '/reports', element: <ReportsPage /> },
+              { path: '/member-penalty-summary', element: <MemberPenaltySummary /> },
             ],
           },
           { index: true, element: <Navigate to="/catalog" replace /> },

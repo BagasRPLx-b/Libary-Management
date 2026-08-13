@@ -5,9 +5,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
-  Mail, Phone, RefreshCw, MapPin, ChevronRight, BookOpen,
-  DollarSign, Settings, Edit3, Key, Library, Calendar, CheckCircle,
-  ArrowUpRight, Camera, Shield
+  Mail, Phone, RefreshCw, ChevronRight, BookOpen,
+  DollarSign, Library, Calendar, CheckCircle,
+  ArrowUpRight, AlertCircle
 } from 'lucide-react';
 import MemberPageHeader from '@/components/layout/MemberPageHeader';
 import { useProfile, useMyLoans } from '../hooks/useProfile';
@@ -26,19 +26,26 @@ export default function ProfilePage() {
   const memberCode = currentProfile && typeof currentProfile === 'object' && 'member_code' in currentProfile
     ? currentProfile.member_code
     : undefined;
+  const memberStatus = currentProfile && typeof currentProfile === 'object' && 'status' in currentProfile
+    ? currentProfile.status
+    : 'active';
 
   const totalBorrowed = myLoans.length;
   const totalActiveLoans = activeLoans.length;
   
-  const totalFine = myLoans.reduce((sum, loan) => {
-    // Hanya loan yang sudah returned dan punya fine_amount
+  // Denda final (hanya dari loan yang sudah returned)
+  const totalFinalFine = myLoans.reduce((sum, loan) => {
     if (loan.status === 'returned' && loan.fine_amount) {
       const fine = parseFloat(String(loan.fine_amount));
       return sum + (isNaN(fine) ? 0 : fine);
     }
-    // ❌ JANGAN tambahkan estimated_fine dari loan overdue (belum final)
     return sum;
   }, 0);
+
+  // Estimasi denda (dari loan overdue)
+  const totalEstimatedFine = myLoans
+    .filter((loan: Loan) => loan.status === 'overdue' && loan.estimated_fine)
+    .reduce((sum, loan) => sum + parseFloat(String(loan.estimated_fine)), 0);
 
   const recentHistory = loanHistory.slice(0, 5);
 
@@ -136,36 +143,24 @@ export default function ProfilePage() {
                     className="w-full h-full object-cover"
                   />
                 </div>
-                <button className="absolute -bottom-2 -right-2 bg-[#0055FF] text-white p-2 rounded-full border-2 border-white shadow-sm hover:bg-blue-700 transition-colors">
-                  <Camera className="h-4 w-4" />
-                </button>
               </div>
               <div className="flex flex-col justify-center">
                 <div className="flex items-center gap-2">
                   <h2 className="text-xl font-bold text-gray-900">{currentProfile?.name}</h2>
-                  <Badge className="bg-blue-50 text-[#0055FF] border-transparent font-semibold text-[10px] px-1.5 py-0">
-                    <CheckCircle className="w-3 h-3 mr-1 inline" /> Aktif
+                  <Badge className={`${memberStatus === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'} border-transparent font-semibold text-[10px] px-1.5 py-0`}>
+                    <CheckCircle className="w-3 h-3 mr-1 inline" /> {memberStatus === 'active' ? 'Aktif' : 'Tidak Aktif'}
                   </Badge>
                 </div>
                 <p className="text-sm text-gray-500 mt-1">ID Anggota: {memberCode || 'LC-20240901'}</p>
               </div>
             </div>
-
-            <div className="flex gap-3 mt-6">
-              <Button className="flex-1 bg-[#0055FF] hover:bg-blue-700 text-white rounded-lg gap-2 shadow-sm font-semibold">
-                <Edit3 className="h-4 w-4" /> Edit Profil
-              </Button>
-              <Button variant="outline" className="flex-1 rounded-lg gap-2 font-semibold text-[#0055FF] border-[#0055FF] hover:bg-blue-50">
-                <Settings className="h-4 w-4" /> Pengaturan Akun
-              </Button>
-            </div>
           </div>
 
-          {/* Informasi Pribadi Card */}
+          {/* Informasi Pribadi Card - Hanya data dari API */}
           <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
             <h3 className="text-lg font-bold text-gray-900 mb-6">Informasi Pribadi</h3>
-            <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-4 border-b border-gray-100 pb-5">
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4 border-b border-gray-100 pb-4">
                 <div>
                   <p className="text-xs font-semibold text-gray-500 mb-1">Email Address</p>
                   <p className="text-sm font-medium text-gray-900 flex items-center gap-2">
@@ -179,30 +174,18 @@ export default function ProfilePage() {
                   </p>
                 </div>
               </div>
-              <div className="border-b border-gray-100 pb-5">
-                <p className="text-xs font-semibold text-gray-500 mb-1">Alamat Tempat Tinggal</p>
-                <p className="text-sm font-medium text-gray-900 flex items-start gap-2">
-                  <MapPin className="h-4 w-4 text-[#0055FF] mt-0.5 flex-shrink-0" />
-                  Jl. Pendidikan No. 42, Kel. Sarjana, Kec. Akademik, Kota Perpustakaan, Jawa Barat 40123
-                </p>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
+              {/* ✅ Hanya tampilkan tanggal bergabung jika ada dari API */}
+              {currentProfile?.created_at && (
+                <div className="border-b border-gray-100 pb-4">
                   <p className="text-xs font-semibold text-gray-500 mb-1">Tanggal Bergabung</p>
                   <p className="text-sm font-medium text-gray-900 flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-[#0055FF]" /> 15 Januari 2022
+                    <Calendar className="h-4 w-4 text-[#0055FF]" /> {formatDateString(currentProfile.created_at)}
                   </p>
                 </div>
-                <div>
-                  <p className="text-xs font-semibold text-gray-500 mb-1">Berlaku Hingga</p>
-                  <p className="text-sm font-medium text-gray-900 flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-[#0055FF]" /> 15 Januari 2025
-                  </p>
-                </div>
-              </div>
+              )}
+              {/* ❌ Alamat & Berlaku Hingga dihapus karena tidak ada di database */}
             </div>
           </div>
-
         </div>
 
         {/* ─── RIGHT COLUMN ─── */}
@@ -219,22 +202,33 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* ✅ Denda Aktif - Menggunakan data dari API */}
-            <div className="bg-red-50 rounded-xl p-6 border border-red-100 relative overflow-hidden shadow-sm">
-              <div className="absolute right-0 bottom-0 opacity-5">
-                <DollarSign className="w-32 h-32 -mr-6 -mb-6 text-red-900" />
-              </div>
-              <div className="relative z-10 flex flex-col justify-between h-full">
+            {/* Denda Aktif - Menampilkan Denda Final dan Estimasi */}
+            <div className={`${totalFinalFine > 0 || totalEstimatedFine > 0 ? 'bg-red-50' : 'bg-gray-50'} rounded-xl p-6 border ${totalFinalFine > 0 || totalEstimatedFine > 0 ? 'border-red-100' : 'border-gray-200'} relative overflow-hidden shadow-sm`}>
+              <div className="relative z-10 space-y-3">
+                {/* Denda Final */}
                 <div>
-                  <p className="text-xs font-semibold text-red-400 uppercase tracking-wider mb-2">Denda Aktif</p>
-                  <p className={`text-4xl font-bold ${totalFine > 0 ? 'text-red-600' : 'text-gray-400'} mb-1`}>
-                    {formatRupiah(totalFine)}
+                  <p className="text-xs font-semibold text-red-400 uppercase tracking-wider">Denda Final</p>
+                  <p className={`text-4xl font-bold ${totalFinalFine > 0 ? 'text-red-600' : 'text-gray-400'} mb-1`}>
+                    {formatRupiah(totalFinalFine)}
                   </p>
+                  {totalFinalFine > 0 && (
+                    <Button variant="link" className="text-red-600 font-bold p-0 h-auto justify-start mt-2 hover:text-red-800">
+                      Bayar Sekarang →
+                    </Button>
+                  )}
                 </div>
-                {totalFine > 0 && (
-                  <Button variant="link" className="text-red-600 font-bold p-0 h-auto justify-start mt-2 hover:text-red-800">
-                    Bayar Sekarang →
-                  </Button>
+
+                {/* Denda Berjalan (Estimasi) */}
+                {totalEstimatedFine > 0 && (
+                  <div className="mt-3 pt-3 border-t border-red-200/70">
+                    <p className="text-xs font-semibold text-yellow-600 flex items-center gap-1">
+                      <AlertCircle className="h-3.5 w-3.5" /> Denda Berjalan (Estimasi)
+                    </p>
+                    <p className="text-xl font-bold text-yellow-700">{formatRupiah(totalEstimatedFine)}</p>
+                    <p className="text-[10px] text-red-400 mt-0.5">
+                      *Denda akan menjadi final setelah buku dikembalikan
+                    </p>
+                  </div>
                 )}
               </div>
             </div>
@@ -260,35 +254,7 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm flex flex-col justify-between">
-              <h3 className="text-base font-bold text-gray-900 mb-4">Preferensi Keamanan</h3>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                      <Key className="h-4 w-4 text-[#0055FF]" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-gray-900">Ubah Password</p>
-                      <p className="text-[10px] text-gray-500 font-medium">Terakhir diubah 3 bulan lalu</p>
-                    </div>
-                  </div>
-                  <ChevronRight className="h-4 w-4 text-gray-400" />
-                </div>
-                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                      <Shield className="h-4 w-4 text-[#0055FF]" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-gray-900">2FA Verification</p>
-                      <p className="text-[10px] text-red-500 font-medium">Belum Aktif</p>
-                    </div>
-                  </div>
-                  <ChevronRight className="h-4 w-4 text-gray-400" />
-                </div>
-              </div>
-            </div>
+            {/* ❌ Preferensi Keamanan dihapus karena tidak ada di database */}
           </div>
         </div>
       </div>
