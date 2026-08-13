@@ -1,20 +1,21 @@
+import { lazy } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import PublicLayout from '@/components/layout/PublicLayout';
 import AppLayout from '@/components/layout/AppLayout';
-import LoginPage from '@/features/auth/pages/LoginPage';
-import RegisterPage from '@/features/auth/pages/RegisterPage';
 import ProtectedRoute from '@/features/auth/components/ProtectedRoute';
 import RoleRoute from '@/features/auth/components/RoleRoute';
-import CatalogPage from '@/features/books/pages/CatalogPage';
-import BookDetailPage from '@/features/books/pages/BookDetailPage';
-import CirculationPage from '@/features/loans/pages/CirculationPage';
-import MembersPage from '@/features/members/pages/MembersPage';
-import ProfilePage from '@/features/members/pages/ProfilePage';
-import ReportsPage from '@/features/reports/pages/ReportsPage';
-import MemberLoansPage from '@/features/members/pages/MemberLoansPage';
-import ActiveLoansPage from '@/features/loans/pages/ActiveLoansPage'; // ✅ Import ActiveLoansPage
-import MemberPenaltySummary from '@/features/reports/pages/MemberPenaltySummary';
 
+const LoginPage = lazy(() => import('@/features/auth/pages/LoginPage'));
+const RegisterPage = lazy(() => import('@/features/auth/pages/RegisterPage'));
+const CatalogPage = lazy(() => import('@/features/books/pages/CatalogPage'));
+const BookDetailPage = lazy(() => import('@/features/books/pages/BookDetailPage'));
+const CirculationPage = lazy(() => import('@/features/loans/pages/CirculationPage'));
+const MembersPage = lazy(() => import('@/features/members/pages/MembersPage'));
+const ProfilePage = lazy(() => import('@/features/members/pages/ProfilePage'));
+const ReportsPage = lazy(() => import('@/features/reports/pages/ReportsPage'));
+const MemberLoansPage = lazy(() => import('@/features/members/pages/MemberLoansPage'));
+const ActiveLoansPage = lazy(() => import('@/features/loans/pages/ActiveLoansPage'));
+const MemberPenaltySummary = lazy(() => import('@/features/reports/pages/MemberPenaltySummary'));
 
 export const router = createBrowserRouter([
   {
@@ -28,7 +29,7 @@ export const router = createBrowserRouter([
     element: <ProtectedRoute />,
     children: [
       {
-        element: <AppLayout />, // 👈 Ini akan pilih layout berdasarkan role
+        element: <AppLayout />,
         children: [
           { path: '/catalog', element: <CatalogPage /> },
           { path: '/books/:id', element: <BookDetailPage /> },
@@ -38,8 +39,7 @@ export const router = createBrowserRouter([
             element: <RoleRoute allowedRoles={['Admin', 'Staff']} />,
             children: [
               { path: '/circulation', element: <CirculationPage /> },
-              { path: '/active-loans', element: <ActiveLoansPage /> }, // ✅ Tambahkan ini
-
+              { path: '/active-loans', element: <ActiveLoansPage /> },
               { path: '/members', element: <MembersPage /> },
               { path: '/reports', element: <ReportsPage /> },
               { path: '/member-penalty-summary', element: <MemberPenaltySummary /> },

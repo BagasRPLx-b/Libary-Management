@@ -1,21 +1,16 @@
-// src/features/reports/pages/MemberOverdueSummary.tsx
-import { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+﻿import { useState, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Search, Users, BookOpen, Coins, Eye, RefreshCw, 
-  AlertCircle, Calendar 
-} from 'lucide-react';
+import { Search, Users, BookOpen, Coins, Eye, RefreshCw, Calendar } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { format, parseISO } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { useOverdueLoans } from '../hooks/useReports';
-import { useMembers } from '@/features/members/hooks/useMember';
+import type { OverdueLoan } from '@/types';
 
 interface MemberSummary {
   member_id: number;
@@ -23,7 +18,7 @@ interface MemberSummary {
   member_code: string;
   total_overdue: number;
   total_estimated_fine: number;
-  loans: any[]; // untuk detail
+  loans: OverdueLoan[];
   last_overdue_date: string | null;
 }
 
@@ -31,18 +26,12 @@ export default function MemberOverdueSummary() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedMember, setSelectedMember] = useState<MemberSummary | null>(null);
 
-  // ✅ Ambil data overdue loans (sudah ada)
-  const { data: overdueLoans = [], isLoading: isLoadingOverdue, isError, refetch } = useOverdueLoans();
+  const { data: overdueLoans = [], isLoading: isLoadingOverdue, refetch } = useOverdueLoans();
 
-  // ✅ (Opsional) Ambil data semua member, untuk menampilkan member tanpa overdue
-  const { data: allMembers = [] } = useMembers();
-
-  // ✅ Agregasi data di frontend
   const memberSummary = useMemo(() => {
-    // Group loans by member_id
     const grouped = new Map<number, MemberSummary>();
 
-    overdueLoans.forEach((loan: any) => {
+    overdueLoans.forEach((loan) => {
       const memberId = loan.member?.id || loan.member_id;
       if (!memberId) return;
 
@@ -64,7 +53,6 @@ export default function MemberOverdueSummary() {
       entry.total_estimated_fine += fine;
       entry.loans.push(loan);
 
-      // Update last overdue date
       if (loan.due_date) {
         const dueDate = new Date(loan.due_date);
         if (!entry.last_overdue_date || dueDate > new Date(entry.last_overdue_date)) {
@@ -76,17 +64,15 @@ export default function MemberOverdueSummary() {
     return Array.from(grouped.values());
   }, [overdueLoans]);
 
-  // Filter berdasarkan search
   const filteredMembers = memberSummary.filter((member) => {
     if (!searchTerm) return true;
     return member.member_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-           member.member_code.toLowerCase().includes(searchTerm.toLowerCase());
+      member.member_code.toLowerCase().includes(searchTerm.toLowerCase());
   });
 
-  // Summary cards
   const totalMembers = memberSummary.length;
-  const totalOverdueBooks = memberSummary.reduce((sum, m) => sum + m.total_overdue, 0);
-  const totalEstimatedFine = memberSummary.reduce((sum, m) => sum + m.total_estimated_fine, 0);
+  const totalOverdueBooks = memberSummary.reduce((sum, member) => sum + member.total_overdue, 0);
+  const totalEstimatedFine = memberSummary.reduce((sum, member) => sum + member.total_estimated_fine, 0);
 
   const formatDate = (dateStr?: string | null) => {
     if (!dateStr) return '-';
@@ -99,7 +85,6 @@ export default function MemberOverdueSummary() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
@@ -109,17 +94,11 @@ export default function MemberOverdueSummary() {
             Ringkasan anggota yang memiliki peminjaman terlambat (overdue).
           </p>
         </div>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={() => refetch()}
-          className="gap-2"
-        >
+        <Button variant="outline" size="sm" onClick={() => refetch()} className="gap-2">
           <RefreshCw className="h-4 w-4" /> Refresh
         </Button>
       </div>
 
-      {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card className="bg-blue-50/55 border border-blue-100 rounded-xl">
           <CardContent className="p-5 flex items-center justify-between">
@@ -161,7 +140,6 @@ export default function MemberOverdueSummary() {
         </Card>
       </div>
 
-      {/* Search */}
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
         <Input
@@ -172,7 +150,6 @@ export default function MemberOverdueSummary() {
         />
       </div>
 
-      {/* Table */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <Table>
@@ -223,8 +200,8 @@ export default function MemberOverdueSummary() {
                       {formatDate(member.last_overdue_date)}
                     </TableCell>
                     <TableCell className="text-center">
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         size="sm"
                         className="h-8 gap-1 text-xs"
                         onClick={() => setSelectedMember(member)}
@@ -238,20 +215,13 @@ export default function MemberOverdueSummary() {
             </TableBody>
           </Table>
         </div>
-        {filteredMembers.length > 0 && (
-          <div className="p-4 border-t border-gray-100 text-sm text-gray-500 bg-gray-50/30">
-            Menampilkan {filteredMembers.length} dari {totalMembers} member dengan overdue
-          </div>
-        )}
       </div>
 
-      {/* Detail Dialog */}
       <Dialog open={!!selectedMember} onOpenChange={() => setSelectedMember(null)}>
-        <DialogContent className="max-w-2xl rounded-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-md rounded-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5 text-[#0055FF]" />
-              Detail Overdue Member
+              <Users className="h-5 w-5 text-[#0055FF]" /> Detail Overdue Member
             </DialogTitle>
             {selectedMember && (
               <div className="mt-1">
@@ -260,44 +230,32 @@ export default function MemberOverdueSummary() {
               </div>
             )}
           </DialogHeader>
-          
           {selectedMember && (
-            <div className="space-y-4">
-              <div className="bg-yellow-50 p-4 rounded-xl border border-yellow-200 flex justify-between items-center">
-                <span className="text-sm font-medium text-yellow-800">Total Estimasi Denda</span>
-                <span className="text-xl font-bold text-yellow-900">
+            <div className="space-y-4 py-2">
+              <div className="flex justify-between border-b pb-2">
+                <span className="text-gray-500">Total Overdue</span>
+                <span className="font-bold">{selectedMember.total_overdue} buku</span>
+              </div>
+              <div className="flex justify-between border-b pb-2">
+                <span className="text-gray-500">Estimasi Denda</span>
+                <span className="font-bold text-yellow-600">
                   Rp {selectedMember.total_estimated_fine.toLocaleString('id-ID')}
                 </span>
               </div>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Buku</TableHead>
-                    <TableHead>Jatuh Tempo</TableHead>
-                    <TableHead className="text-center">Keterlambatan</TableHead>
-                    <TableHead className="text-right">Estimasi Denda</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {selectedMember.loans.map((loan: any) => {
-                    const days = Math.ceil((new Date().getTime() - new Date(loan.due_date).getTime()) / (1000 * 60 * 60 * 24));
-                    return (
-                      <TableRow key={loan.id}>
-                        <TableCell className="font-medium">{loan.book?.title || 'Unknown'}</TableCell>
-                        <TableCell className="text-gray-500">{formatDate(loan.due_date)}</TableCell>
-                        <TableCell className="text-center">
-                          <Badge className="bg-red-50 text-red-700 border-red-200">
-                            {Math.max(0, days)} hari
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right font-medium text-yellow-600">
-                          Rp {(loan.estimated_fine || 0).toLocaleString('id-ID')}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                  <Calendar className="h-4 w-4 text-[#0055FF]" /> Daftar Buku Tertunggak
+                </div>
+                {selectedMember.loans.map((loan) => (
+                  <div key={loan.id} className="rounded-lg border border-gray-200 p-3 text-sm">
+                    <div className="flex justify-between gap-4">
+                      <span className="font-medium text-gray-800">{loan.book?.title || 'Judul tidak tersedia'}</span>
+                      <Badge className="bg-red-50 text-red-700 border-red-200">{loan.status}</Badge>
+                    </div>
+                    <p className="text-gray-500 mt-1">Jatuh tempo: {loan.due_date ? formatDate(loan.due_date) : '-'}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </DialogContent>

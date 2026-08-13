@@ -1,33 +1,32 @@
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+﻿import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { Search, Users, BookOpen, Coins, Eye, RefreshCw, AlertCircle } from 'lucide-react';
+import { Search, Users, Coins, Eye, RefreshCw, AlertCircle } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import type { MemberPenaltySummaryItem } from '@/types';
 import { useMemberPenalty } from '../hooks/useReports';
 
 export default function MemberPenaltySummary() {
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
-  const [selectedMember, setSelectedMember] = useState<any | null>(null);
+  const [selectedMember, setSelectedMember] = useState<MemberPenaltySummaryItem | null>(null);
 
-  const { data, isLoading, isError, refetch } = useMemberPenalty({
+  const { data, isLoading, refetch } = useMemberPenalty({
     search: searchTerm || undefined,
     page,
     per_page: 10,
   });
 
-  const members = data?.data || [];
-  const summary = data?.summary || { total_members: 0, total_penalty_count: 0, total_final_fine: 0 };
-  const pagination = data?.pagination || { current_page: 1, last_page: 1 };
+  const members = data?.data ?? [];
+  const summary = data?.summary ?? { total_members: 0, total_penalty_count: 0, total_final_fine: 0 };
+  const pagination = data?.pagination ?? { current_page: 1, last_page: 1, per_page: 10, total: 0 };
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
@@ -42,7 +41,6 @@ export default function MemberPenaltySummary() {
         </Button>
       </div>
 
-      {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card className="bg-blue-50/55 border border-blue-100">
           <CardContent className="p-5 flex items-center justify-between">
@@ -83,7 +81,6 @@ export default function MemberPenaltySummary() {
         </Card>
       </div>
 
-      {/* Search */}
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
         <Input
@@ -94,7 +91,6 @@ export default function MemberPenaltySummary() {
         />
       </div>
 
-      {/* Table */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <Table>
@@ -123,7 +119,7 @@ export default function MemberPenaltySummary() {
                   </TableCell>
                 </TableRow>
               ) : (
-                members.map((member: any) => (
+                members.map((member) => (
                   <TableRow key={member.member_id} className="hover:bg-gray-50/50 transition-colors">
                     <TableCell>
                       <div>
@@ -140,8 +136,8 @@ export default function MemberPenaltySummary() {
                       Rp {member.total_final_fine.toLocaleString('id-ID')}
                     </TableCell>
                     <TableCell className="text-center">
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         size="sm"
                         className="h-8 gap-1 text-xs"
                         onClick={() => setSelectedMember(member)}
@@ -155,22 +151,22 @@ export default function MemberPenaltySummary() {
             </TableBody>
           </Table>
         </div>
-        {pagination && pagination.last_page > 1 && (
+        {pagination.last_page > 1 && (
           <div className="p-4 border-t border-gray-100 flex items-center justify-between text-sm text-gray-500">
             <span>
-              Menampilkan {((pagination.current_page - 1) * (pagination.per_page || 10)) + 1} - {Math.min(pagination.current_page * (pagination.per_page || 10), pagination.total)} dari {pagination.total} member
+              Menampilkan {((pagination.current_page - 1) * (pagination.per_page || 10)) + 1} - {Math.min(pagination.current_page * (pagination.per_page || 10), pagination.total || 0)} dari {pagination.total || 0} member
             </span>
             <div className="flex gap-1">
-              <button 
-                onClick={() => setPage(p => Math.max(1, p - 1))}
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}
                 className="px-3 py-1 rounded border border-gray-200 hover:bg-gray-50 disabled:opacity-50"
               >
                 &lt;
               </button>
               <span className="px-3 py-1 rounded bg-[#0055FF] text-white">{page}</span>
-              <button 
-                onClick={() => setPage(p => Math.min(pagination.last_page, p + 1))}
+              <button
+                onClick={() => setPage((p) => Math.min(pagination.last_page, p + 1))}
                 disabled={page === pagination.last_page}
                 className="px-3 py-1 rounded border border-gray-200 hover:bg-gray-50 disabled:opacity-50"
               >
@@ -181,7 +177,6 @@ export default function MemberPenaltySummary() {
         )}
       </div>
 
-      {/* Detail Dialog */}
       <Dialog open={!!selectedMember} onOpenChange={() => setSelectedMember(null)}>
         <DialogContent className="max-w-md rounded-2xl">
           <DialogHeader>

@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, type ReactNode } from 'react';
 import apiClient from '@/lib/api/client';
 
 interface User {
@@ -18,35 +18,72 @@ interface AuthContextType {
   isAuthenticated: boolean;
 }
 
+const STORAGE_KEYS = {
+  TOKEN: 'access_token',
+  USER: 'user',
+} as const;
+
+const readStorageValue = (key: string) => {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  try {
+    const value = window.sessionStorage.getItem(key);
+    return value && value !== 'undefined' && value !== 'null' ? value : null;
+  } catch {
+    return null;
+  }
+};
+
+const writeStorageValue = (key: string, value: string) => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    window.sessionStorage.setItem(key, value);
+  } catch {
+    // Ignore storage quota or browser restrictions.
+  }
+};
+
+const removeStorageValue = (key: string) => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    window.sessionStorage.removeItem(key);
+  } catch {
+    // Ignore storage access issues.
+  }
+};
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  // Inisialisasi dari localStorage
   const [user, setUser] = useState<User | null>(() => {
-    try {
-      const storedUser = localStorage.getItem('user');
-      if (storedUser && storedUser !== 'undefined' && storedUser !== 'null') {
-        return JSON.parse(storedUser);
-      }
-    } catch (e) {
-      console.error('Failed to parse user from localStorage:', e);
+    const storedUser = readStorageValue(STORAGE_KEYS.USER);
+    if (!storedUser) {
+      return null;
     }
-    return null;
+
+    try {
+      return JSON.parse(storedUser) as User;
+    } catch {
+      removeStorageValue(STORAGE_KEYS.USER);
+      return null;
+    }
   });
 
-  const [token, setToken] = useState<string | null>(() => {
-    const storedToken = localStorage.getItem('access_token');
-    if (storedToken && storedToken !== 'undefined' && storedToken !== 'null') {
-      return storedToken;
-    }
-    return null;
-  });
+  const [token, setToken] = useState<string | null>(() => readStorageValue(STORAGE_KEYS.TOKEN));
 
   const login = (userData: User, accessToken: string) => {
     setUser(userData);
     setToken(accessToken);
-    localStorage.setItem('access_token', accessToken);
-    localStorage.setItem('user', JSON.stringify(userData));
+    writeStorageValue(STORAGE_KEYS.TOKEN, accessToken);
+    writeStorageValue(STORAGE_KEYS.USER, JSON.stringify(userData));
   };
 
   const logout = async () => {
@@ -57,8 +94,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       setUser(null);
       setToken(null);
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('user');
+      removeStorageValue(STORAGE_KEYS.TOKEN);
+      removeStorageValue(STORAGE_KEYS.USER);
     }
   };
 

@@ -23,12 +23,15 @@ export default function ProfilePage() {
   const loanHistory = myLoans.filter((loan: Loan) => loan.status === 'returned');
 
   const currentProfile = profile || user;
-  const memberCode = currentProfile && typeof currentProfile === 'object' && 'member_code' in currentProfile
+  const memberCode = (currentProfile && typeof currentProfile === 'object' && 'member_code' in currentProfile)
     ? currentProfile.member_code
     : undefined;
-  const memberStatus = currentProfile && typeof currentProfile === 'object' && 'status' in currentProfile
+  const memberStatus = (currentProfile && typeof currentProfile === 'object' && 'status' in currentProfile)
     ? currentProfile.status
     : 'active';
+  const joinedAt = (currentProfile && typeof currentProfile === 'object' && 'created_at' in currentProfile)
+    ? currentProfile.created_at
+    : undefined;
 
   const totalBorrowed = myLoans.length;
   const totalActiveLoans = activeLoans.length;
@@ -175,11 +178,11 @@ export default function ProfilePage() {
                 </div>
               </div>
               {/* ✅ Hanya tampilkan tanggal bergabung jika ada dari API */}
-              {currentProfile?.created_at && (
+              {joinedAt && (
                 <div className="border-b border-gray-100 pb-4">
                   <p className="text-xs font-semibold text-gray-500 mb-1">Tanggal Bergabung</p>
                   <p className="text-sm font-medium text-gray-900 flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-[#0055FF]" /> {formatDateString(currentProfile.created_at)}
+                    <Calendar className="h-4 w-4 text-[#0055FF]" /> {formatDateString(joinedAt)}
                   </p>
                 </div>
               )}

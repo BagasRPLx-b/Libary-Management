@@ -12,28 +12,7 @@ import { id } from 'date-fns/locale';
 import { useMyLoans, useMyLoanHistory } from '../hooks/useProfile';
 import { Progress } from '@/components/ui/progress';
 import MemberPageHeader from '@/components/layout/MemberPageHeader';
-
-// ─── Types ────────────────────────────────────────────────
-interface Book {
-  id: number;
-  title: string;
-  author?: string;
-  category?: string;
-}
-
-interface Loan {
-  id: number;
-  book: Book;
-  borrow_date: string;
-  due_date: string;
-  return_date?: string | null;
-  borrowed_at?: string;
-  returned_at?: string | null;
-  created_at?: string;
-  status: 'active' | 'returned' | 'overdue';
-  fine_amount?: number;
-  estimated_fine?: number;
-}
+import type { Loan as ApiLoan } from '@/types';
 
 export default function MemberLoansPage() {
   // ✅ Ambil SEMUA loan (tanpa filter status)
@@ -42,7 +21,7 @@ export default function MemberLoansPage() {
 
   // ✅ Filter untuk "Sedang Dipinjam" = active + overdue
   const currentLoans = allLoans.filter(
-    (loan: Loan) => loan.status === 'active' || loan.status === 'overdue'
+    (loan: ApiLoan) => loan.status === 'active' || loan.status === 'overdue'
   );
 
   // ─── Pagination State ───────────────────────────────────
@@ -66,7 +45,7 @@ export default function MemberLoansPage() {
   };
 
   // ─── Cari tanggal ────────────────────────────────────────
-  const getLoanDate = (loan: Loan, type: 'borrow' | 'return'): string | null => {
+  const getLoanDate = (loan: ApiLoan, type: 'borrow' | 'return'): string | null => {
     if (type === 'borrow') {
       return loan.borrowed_at || loan.borrow_date || loan.created_at || null;
     }
@@ -153,11 +132,13 @@ export default function MemberLoansPage() {
           </div>
         ) : (
           <div className="flex gap-6 overflow-x-auto pb-6 scrollbar-hide">
-            {currentLoans.map((loan: Loan) => {
+            {currentLoans.map((loan: ApiLoan) => {
               const daysLeft = getDaysLeft(loan.due_date);
               const isOverdue = loan.status === 'overdue' || daysLeft < 0;
               const progressPercent = Math.max(0, Math.min(100, ((14 - Math.max(0, daysLeft)) / 14) * 100));
-              const estimatedFine = loan.estimated_fine || 0;
+              const estimatedFine = typeof loan.estimated_fine === 'string'
+                ? parseFloat(loan.estimated_fine) || 0
+                : Number(loan.estimated_fine ?? 0);
 
               return (
                 <div key={loan.id} className={`bg-white rounded-xl p-5 border shadow-sm min-w-[380px] w-[380px] flex gap-4 relative overflow-hidden ${isOverdue ? 'border-red-200 bg-red-50/10' : 'border-gray-200 hover:border-blue-200'} transition-all duration-300 hover:shadow-md`}>
@@ -277,7 +258,7 @@ export default function MemberLoansPage() {
                   </td>
                 </tr>
               ) : (
-                paginatedHistory.map((loan: Loan) => (
+                paginatedHistory.map((loan: ApiLoan) => (
                   <tr key={loan.id} className="hover:bg-gray-50/70 transition-colors">
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-3">

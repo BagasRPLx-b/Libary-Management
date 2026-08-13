@@ -92,6 +92,7 @@ export interface ActiveLoan {
   return_date?: string;
   status: LoanStatus | string;
   fine_amount?: number | string;
+  estimated_fine?: number | string;
   member_name?: string;
 }
 
@@ -110,10 +111,11 @@ export interface Loan {
   return_date: string | null;
   status: LoanStatus;
   fine_amount: number;
+  estimated_fine?: number | string;
   created_at: string;
   updated_at: string;
   borrowed_at?: string;
-  returned_at?: string;
+  returned_at?: string | null;
 }
 
 export interface ScannedBook extends Book {
@@ -182,6 +184,7 @@ export interface Profile {
   phone: string;
   member_code: string;
   status: 'active' | 'suspended';
+  created_at?: string;
   joined_date?: string;
   valid_until?: string;
   total_borrowed?: number;
@@ -189,6 +192,29 @@ export interface Profile {
   active_loans_count?: number;
   loans?: Loan[];
   active_loans?: number;
+}
+
+export interface MemberPenaltySummaryItem {
+  member_id: number;
+  member_name: string;
+  member_code: string;
+  total_penalty_count: number;
+  total_final_fine: number;
+}
+
+export interface MemberPenaltySummaryResponse {
+  data: MemberPenaltySummaryItem[];
+  summary: {
+    total_members: number;
+    total_penalty_count: number;
+    total_final_fine: number;
+  };
+  pagination?: {
+    current_page: number;
+    last_page: number;
+    per_page?: number;
+    total?: number;
+  };
 }
 
 export interface Transaction {

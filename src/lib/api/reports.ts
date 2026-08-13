@@ -1,6 +1,6 @@
 // src/lib/api/reports.ts
 import apiClient from './client';
-import type { OverdueLoan, OverdueResponse } from '@/types';
+import type { MemberPenaltySummaryResponse, OverdueLoan, OverdueResponse } from '@/types';
 
 export const reportApi = {
   getOverdueLoans: async (search?: string): Promise<OverdueLoan[]> => {
@@ -17,9 +17,8 @@ export const reportApi = {
     return [];
   },
 
-  // ✅ TAMBAHKAN INI
-  getMemberPenalty: async (params?: { search?: string; page?: number; per_page?: number }) => {
-    const response = await apiClient.get('/reports/member-penalty', { params });
+  getMemberPenalty: async (params?: { search?: string; page?: number; per_page?: number }): Promise<MemberPenaltySummaryResponse> => {
+    const response = await apiClient.get<MemberPenaltySummaryResponse>('/reports/member-penalty', { params });
     return response.data;
   },
 };
