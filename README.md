@@ -102,13 +102,9 @@ Tunggu proses instalasi selesai (biasanya 2-5 menit tergantung kecepatan interne
 
 ### Langkah 3: Konfigurasi Environment (Opsional)
 
-Buat file `.env.development` di folder root project:
+Buat file `.env` di folder root project:
 
-```bash
-cp .env.example .env.development
-```
-
-Buka `.env.development` dengan text editor dan pastikan berisi:
+Buka `.env` dengan text editor dan pastikan berisi:
 
 ```env
 VITE_API_URL=https://barrier-generation-queensland-session.trycloudflare.com/api/v1
