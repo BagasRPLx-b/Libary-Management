@@ -5,12 +5,25 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const apiProxyTarget = process.env.VITE_API_PROXY || process.env.API_PROXY || 'https://longest-should-lift-crop.trycloudflare.com'
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, 'src'),
+    },
+  },
+  // Dev server proxy: forward /api -> backend /api/v1
+  server: {
+    proxy: {
+      '^/api': {
+        target: apiProxyTarget,
+        changeOrigin: true,
+        secure: true,
+        // Rewrite /api/... to /api/v1/...
+        rewrite: (path) => path.replace(/^\/api/, '/api/v1'),
+      },
     },
   },
 })

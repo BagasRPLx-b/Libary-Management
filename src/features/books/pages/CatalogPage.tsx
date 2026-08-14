@@ -1,97 +1,147 @@
-import { useState } from 'react';
+// src/features/books/pages/CatalogPage.tsx
+import { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Search, BookOpen, Pencil, Trash2 } from 'lucide-react';
-import { useBooks, useCreateBook, useUpdateBook, useDeleteBook, type Book } from '@/features/books/hooks/useBooks';
+import { Search, RotateCw, X, Plus, Pencil, Trash2, Eye } from 'lucide-react';
+import { SearchableSelect } from '@/components/ui/searchable-select';
+import { useDebounce } from '@/hooks/useDebounce';
+import {
+  useBooks,
+  useCategories,
+  useAuthors,
+  useCreateBook,
+  useUpdateBook,
+  useDeleteBook,
+  type Book,
+} from '@/features/books/hooks/useBooks';
+import { getErrorMessage } from '@/lib/error-handler';
 
-function BookCardSkeleton() {
-  return (
-    <Card className="flex flex-col">
-      <CardHeader>
-        <Skeleton className="h-5 w-3/4" />
-      </CardHeader>
-      <CardContent className="flex-1 space-y-2">
-        <Skeleton className="h-4 w-1/2" />
-        <Skeleton className="h-4 w-1/3" />
-      </CardContent>
-      <CardFooter>
-        <Skeleton className="h-4 w-16" />
-      </CardFooter>
-    </Card>
-  );
-}
+import { BookCardSkeleton } from '@/features/books/components/BookCardSkeleton';
+import { BookEmptyState } from '@/features/books/components/BookEmptyState';
 
-function EmptyState() {
-  return (
-    <div className="flex flex-col items-center justify-center py-16 text-gray-500">
-      <BookOpen className="h-16 w-16 mb-4" />
-      <p className="text-lg font-medium">Tidak ada buku ditemukan</p>
-      <p className="text-sm">Coba sesuaikan pencarian atau filter Anda.</p>
-    </div>
-  );
-}
-
+// ─── Main Component ──────────────────────────────────────
 export default function CatalogPage() {
   const { user } = useAuth();
-  const [searchParams] = useSearchParams();
-  
-  const [search, setSearch] = useState('');
-  const [filterAuthor, setFilterAuthor] = useState('all');
-  const [filterCategory, setFilterCategory] = useState('all');
+  const [searchParams, setSearchParams] = useSearchParams();
 
+  // Ambil filter dari URL
+  const [search, setSearch] = useState(searchParams.get('search') || '');
+  const debouncedSearch = useDebounce(search, 400);
+  const [filterAuthor, setFilterAuthor] = useState(searchParams.get('author') || 'all');
+  const [filterCategory, setFilterCategory] = useState(searchParams.get('category') || 'all');
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // State untuk modal CRUD
   const [openAddEdit, setOpenAddEdit] = useState(false);
   const [editBook, setEditBook] = useState<Book | null>(null);
+  const [deleteBook, setDeleteBook] = useState<Book | null>(null);
+  const [alert, setAlert] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [form, setForm] = useState({
     title: '',
     author: '',
     isbn: '',
-    category: '',
+    category_id: '',
     totalCopies: 1,
     publisher: '',
-    year: new Date().getFullYear(),
-    pages: 0,
-    language: 'Indonesia',
-    description: '',
+    publication_year: new Date().getFullYear(),
   });
 
-  const [deleteBook, setDeleteBook] = useState<Book | null>(null);
-  const [alert, setAlert] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  // Role check dengan lowercase
+  const isAdminOrStaff = user?.role?.toLowerCase() === 'admin' || user?.role?.toLowerCase() === 'staff';
 
-  const isAdminOrStaff = user?.role === 'Admin' || user?.role === 'Staff';
-  const isMember = user?.role === 'Member';
+  // Data dari API
+  const { data: booksData, isLoading, isError, refetch } = useBooks({
+    search: debouncedSearch || undefined,
+    author: filterAuthor !== 'all' ? filterAuthor : undefined,
+    category_id: filterCategory !== 'all' ? filterCategory : undefined,
+    page: currentPage,
+    per_page: 12,
+  });
 
-  const queryParams = isMember
-    ? {
-        search: searchParams.get('search') || undefined,
-        author: searchParams.get('author') || undefined,
-        category: searchParams.get('category') || undefined,
-      }
-    : {
-        search: search || undefined,
-        author: filterAuthor !== 'all' ? filterAuthor : undefined,
-        category: filterCategory !== 'all' ? filterCategory : undefined,
-      };
+  const books = Array.isArray(booksData) ? booksData : (booksData?.data || []);
+  const totalBooks = !Array.isArray(booksData) && booksData?.total ? booksData.total : books.length;
+  const lastPage = !Array.isArray(booksData) && booksData?.last_page ? booksData.last_page : 1;
 
-  const { data: books = [], isLoading } = useBooks(queryParams);
+
+  const { data: categoriesRaw = [], isLoading: isLoadingCategories } = useCategories();
+  const { data: authorsRaw = [], isLoading: isLoadingAuthors } = useAuthors();
+
+  const categories = Array.isArray(categoriesRaw) ? categoriesRaw : [];
+  const authors = Array.isArray(authorsRaw) ? authorsRaw : [];
+
+  // Mutations
   const { mutate: createBook, isPending: isCreating } = useCreateBook();
   const { mutate: updateBook, isPending: isUpdating } = useUpdateBook();
-  const { mutate: deleteBookMutation } = useDeleteBook();
+  const { mutate: deleteBookMutation, isPending: isDeleting } = useDeleteBook();
 
-  // Fix tipe data
-  const uniqueAuthors: string[] = [...new Set(books.map((b: Book) => b.author).filter(Boolean))];
-  const uniqueCategories: string[] = [...new Set(books.map((b: Book) => b.category).filter(Boolean))];
+  // ─── Convert ke format option untuk SearchableSelect ──
+  const authorOptions = [
+    { value: 'all', label: 'Semua Penulis' },
+    ...authors.map((author) => ({
+      value: author,
+      label: author,
+    })),
+  ];
+
+  // ─── Update URL saat filter berubah ───────────────────
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (debouncedSearch) params.set('search', debouncedSearch);
+    if (filterAuthor && filterAuthor !== 'all') params.set('author', filterAuthor);
+    if (filterCategory && filterCategory !== 'all') params.set('category', filterCategory);
+    setSearchParams(params, { replace: true });
+  }, [debouncedSearch, filterAuthor, filterCategory, setSearchParams]);
+
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    setCurrentPage(1);
+  };
+
+  const handleFilterAuthorChange = (value: string) => {
+    setFilterAuthor(value);
+    setCurrentPage(1);
+  };
+
+  const handleFilterCategoryChange = (value: string) => {
+    setFilterCategory(value);
+    setCurrentPage(1);
+  };
+
+  const clearFilters = () => {
+    setSearch('');
+    setFilterAuthor('all');
+    setFilterCategory('all');
+    setCurrentPage(1);
+  };
+
+  const hasActiveFilters = search || filterAuthor !== 'all' || filterCategory !== 'all';
+
+  // ─── CRUD Handlers ──────────────────────────────────────
+  const resetForm = () => {
+    setForm({
+      title: '',
+      author: '',
+      isbn: '',
+      category_id: '',
+      totalCopies: 1,
+      publisher: '',
+      publication_year: new Date().getFullYear(),
+    });
+  };
 
   const handleSave = () => {
     if (!form.title || !form.author) {
       setAlert({ type: 'error', message: 'Judul dan Penulis wajib diisi.' });
+      return;
+    }
+    if (!form.category_id) {
+      setAlert({ type: 'error', message: 'Kategori wajib dipilih.' });
       return;
     }
 
@@ -99,14 +149,10 @@ export default function CatalogPage() {
       title: form.title,
       author: form.author,
       isbn: form.isbn,
-      category: form.category,
-      available_copies: form.totalCopies,
+      category_id: Number(form.category_id),
+      publication_year: form.publication_year,
       total_copies: form.totalCopies,
       publisher: form.publisher,
-      year: form.year,
-      pages: form.pages,
-      language: form.language,
-      description: form.description,
     };
 
     if (editBook) {
@@ -119,8 +165,8 @@ export default function CatalogPage() {
             setEditBook(null);
             resetForm();
           },
-          onError: (error: any) => {
-            setAlert({ type: 'error', message: error.response?.data?.message || 'Gagal memperbarui buku.' });
+          onError: (error) => {
+            setAlert({ type: 'error', message: getErrorMessage(error) });
           },
         }
       );
@@ -131,8 +177,8 @@ export default function CatalogPage() {
           setOpenAddEdit(false);
           resetForm();
         },
-        onError: (error: any) => {
-          setAlert({ type: 'error', message: error.response?.data?.message || 'Gagal menambahkan buku.' });
+        onError: (error) => {
+          setAlert({ type: 'error', message: getErrorMessage(error) });
         },
       });
     }
@@ -144,13 +190,10 @@ export default function CatalogPage() {
       title: book.title,
       author: book.author,
       isbn: book.isbn || '',
-      category: book.category,
-      totalCopies: book.available_copies,
+      category_id: String(book.category_id || ''),
+      totalCopies: book.total_copies || 1,
       publisher: book.publisher || '',
-      year: book.year || new Date().getFullYear(),
-      pages: book.pages || 0,
-      language: book.language || 'Indonesia',
-      description: book.description || '',
+      publication_year: book.publication_year || new Date().getFullYear(),
     });
     setOpenAddEdit(true);
   };
@@ -162,148 +205,232 @@ export default function CatalogPage() {
           setAlert({ type: 'success', message: 'Buku berhasil dihapus.' });
           setDeleteBook(null);
         },
-        onError: (error: any) => {
-          setAlert({ type: 'error', message: error.response?.data?.message || 'Gagal menghapus buku.' });
+        onError: (error) => {
+          setAlert({ type: 'error', message: getErrorMessage(error) });
         },
       });
     }
   };
 
-  const resetForm = () => {
-    setForm({
-      title: '',
-      author: '',
-      isbn: '',
-      category: '',
-      totalCopies: 1,
-      publisher: '',
-      year: new Date().getFullYear(),
-      pages: 0,
-      language: 'Indonesia',
-      description: '',
-    });
-  };
-
+  // ─── Render ────────────────────────────────────────────
   return (
     <div className="space-y-6">
+      {/* Alert */}
       {alert && (
-        <Alert variant={alert.type === 'success' ? 'default' : 'destructive'}>
-          <AlertDescription>{alert.message}</AlertDescription>
+        <Alert variant={alert.type === 'success' ? 'default' : 'destructive'} className="shadow-sm">
+          <AlertDescription className="flex items-center justify-between">
+            <span>{alert.message}</span>
+            <button onClick={() => setAlert(null)} className="text-gray-500 hover:text-gray-700">
+              <X className="h-4 w-4" />
+            </button>
+          </AlertDescription>
         </Alert>
       )}
 
-      {!isMember && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-500">Total Books</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{books.length}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-500">Total Members</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">-</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-500">Active Loans</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">-</div>
-            </CardContent>
-          </Card>
-        </div>
+      {/* Error State */}
+      {isError && (
+        <Alert variant="destructive">
+          <AlertDescription className="flex items-center justify-between">
+            <span>Gagal memuat data buku.</span>
+            <Button variant="outline" size="sm" onClick={() => refetch()}>
+              <RotateCw className="h-4 w-4 mr-1" /> Coba Lagi
+            </Button>
+          </AlertDescription>
+        </Alert>
       )}
 
-      {!isMember && (
-        <div className="flex flex-wrap gap-3 items-center justify-between">
-          <div className="flex flex-wrap gap-3 items-center flex-1">
-            <div className="relative flex-1 min-w-[200px]">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
-              <Input
-                placeholder="Search by title or author..."
-                className="pl-8"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
-            <Select value={filterAuthor} onValueChange={setFilterAuthor}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Author" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Authors</SelectItem>
-                {uniqueAuthors.map((author) => (
-                  <SelectItem key={author} value={author}>{author}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={filterCategory} onValueChange={setFilterCategory}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Category" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
-                {uniqueCategories.map((cat) => (
-                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+      {/* ─── HEADER ─── */}
+      <div className="flex flex-wrap gap-4 items-end justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <span>📚</span> Catalog Buku
+            {hasActiveFilters && (
+              <span className="text-sm font-normal text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+                Filter aktif
+              </span>
+            )}
+          </h1>
+          <p className="text-sm text-gray-500 mt-1">Temukan koleksi buku perpustakaan.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          {hasActiveFilters && (
+            <Button variant="ghost" size="sm" onClick={clearFilters} className="text-gray-500 gap-1">
+              <X className="h-4 w-4" /> Hapus Filter
+            </Button>
+          )}
           {isAdminOrStaff && (
-            <Button onClick={() => { setEditBook(null); resetForm(); setOpenAddEdit(true); }}>
-              + Tambah Buku
+            <Button
+              onClick={() => {
+                setEditBook(null);
+                resetForm();
+                setOpenAddEdit(true);
+              }}
+              className="rounded-lg gap-2"
+            >
+              <Plus className="h-5 w-5" /> Tambah Buku
             </Button>
           )}
         </div>
-      )}
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {isLoading ? (
-          Array.from({ length: 8 }).map((_, i) => <BookCardSkeleton key={i} />)
-        ) : books.length === 0 ? (
-          <div className="col-span-full">
-            <EmptyState />
-          </div>
-        ) : (
-          books.map((book: Book) => (
-            <Link to={`/books/${book.id}`} key={book.id}>
-              <Card className="flex flex-col hover:shadow-lg transition-all duration-300 hover:-translate-y-1 relative group cursor-pointer">
-                {isAdminOrStaff && (
-                  <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.preventDefault(); handleEditClick(book); }}>
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600 hover:text-red-800" onClick={(e) => { e.preventDefault(); setDeleteBook(book); }}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
-                <CardHeader>
-                  <CardTitle className="text-lg leading-tight">{book.title}</CardTitle>
-                </CardHeader>
-                <CardContent className="flex-1">
-                  <p className="text-sm text-gray-600">✍️ {book.author}</p>
-                  <p className="text-xs text-gray-400 mt-1">📂 {book.category}</p>
-                </CardContent>
-                <CardFooter>
-                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${book.available_copies > 0 ? 'bg-green-50 text-green-700 ring-1 ring-green-600/20' : 'bg-red-50 text-red-700 ring-1 ring-red-600/20'}`}>
-                    <span className={`w-1.5 h-1.5 rounded-full ${book.available_copies > 0 ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                    {book.available_copies > 0 ? `${book.available_copies} tersedia` : 'Tidak tersedia'}
-                  </span>
-                </CardFooter>
-              </Card>
-            </Link>
-          ))
-        )}
       </div>
 
+      {/* ─── SEARCH & FILTER BAR (SAMA UNTUK ADMIN & MEMBER) ─── */}
+      <div className="flex flex-wrap gap-3 items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+        {/* Search Input */}
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Input
+            placeholder="Cari judul atau penulis..."
+            className="pl-9 rounded-lg bg-gray-50 border-gray-200 h-10 w-full"
+            value={search}
+            onChange={(e) => handleSearchChange(e.target.value)}
+          />
+        </div>
+
+        {/* Dropdown Penulis (Searchable) */}
+        <div className="min-w-[180px]">
+          <SearchableSelect
+            options={authorOptions}
+            value={filterAuthor}
+            onChange={handleFilterAuthorChange}
+            placeholder={isLoadingAuthors ? 'Memuat penulis...' : 'Pilih Penulis'}
+            searchPlaceholder="Cari penulis..."
+            emptyText="Tidak ada penulis ditemukan"
+            disabled={isLoadingAuthors}
+          />
+        </div>
+
+        {/* Dropdown Kategori */}
+        <div className="min-w-[160px]">
+          <Select value={filterCategory} onValueChange={handleFilterCategoryChange}>
+            <SelectTrigger className="w-full rounded-lg border-gray-200 h-10 bg-gray-50">
+              <SelectValue placeholder={isLoadingCategories ? "Memuat kategori..." : "Kategori"} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Semua Kategori</SelectItem>
+              {categories.map((cat) => (
+                <SelectItem key={cat.id} value={String(cat.id)}>{cat.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* ─── BOOK LIST ─── */}
+      {isLoading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {Array.from({ length: 8 }).map((_, i) => <BookCardSkeleton key={i} />)}
+        </div>
+      ) : books.length === 0 ? (
+        <BookEmptyState isAdminOrStaff={isAdminOrStaff} onAddFirst={() => { setEditBook(null); resetForm(); setOpenAddEdit(true); }} />
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {books.map((book: Book) => (
+            <div key={book.id} className="block group relative">
+              <Link to={`/books/${book.id}`} className="block">
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-md hover:-translate-y-1 transition-all duration-300 overflow-hidden flex flex-col h-full">
+                  <div className="h-48 bg-gradient-to-tr from-gray-50 to-gray-200 relative overflow-hidden flex items-center justify-center p-4">
+                    {book.available_copies > 0 ? (
+                      <div className="absolute top-2 right-2 bg-green-100 text-green-700 text-[10px] font-bold px-2 py-1 rounded-md z-10 shadow-sm">
+                        TERSEDIA
+                      </div>
+                    ) : (
+                      <div className="absolute top-2 right-2 bg-amber-100 text-amber-700 text-[10px] font-bold px-2 py-1 rounded-md z-10 shadow-sm">
+                        DIPINJAM
+                      </div>
+                    )}
+                    <div className="w-full h-full max-w-[120px] bg-white rounded shadow-md border border-gray-100 flex items-center justify-center relative z-0">
+                      <span className="text-4xl group-hover:scale-110 transition-transform duration-300">📖</span>
+                    </div>
+                  </div>
+                  <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
+                    <div className="space-y-1">
+                      <p className="text-[10px] text-[#0055FF] font-bold uppercase tracking-wider">{book.category?.name ?? 'UMUM'}</p>
+                      <h3 className="font-bold text-gray-900 group-hover:text-[#0055FF] transition-colors line-clamp-1 text-base">{book.title}</h3>
+                      <p className="text-sm text-gray-500 line-clamp-1">{book.author}</p>
+                    </div>
+                    <div className="flex items-center justify-between pt-2">
+                      <div className="flex items-center gap-1">
+                        <span className="text-sm text-gray-500">Stok: {book.available_copies}</span>
+                      </div>
+                      {/* ✅ Tombol Detail untuk SEMUA user (Admin & Member) */}
+                      <Button size="sm" variant="outline" className="border-[#0055FF] text-[#0055FF] hover:bg-blue-50">
+                        <Eye className="h-3.5 w-3.5 mr-1" /> Detail
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </Link>
+              {/* Tombol Edit & Delete hanya untuk Admin/Staff */}
+              {isAdminOrStaff && (
+                <div className="absolute top-2 left-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-20 bg-white/90 backdrop-blur-sm p-1 rounded-lg border border-gray-100 shadow-sm">
+                  <button
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEditClick(book); }}
+                    className="p-1 text-gray-500 hover:text-primary-600 rounded"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setDeleteBook(book); }}
+                    className="p-1 text-gray-500 hover:text-red-600 rounded"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ─── PAGINATION ─── */}
+      {books.length > 0 && (
+        <div className="flex items-center justify-between mt-8 text-sm text-gray-500">
+          <span>
+            Menampilkan {((currentPage - 1) * 12) + 1} - {Math.min(currentPage * 12, totalBooks)} dari {totalBooks} buku
+          </span>
+          <div className="flex gap-1.5">
+            <button
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className={`w-8 h-8 flex items-center justify-center rounded border ${currentPage === 1 ? 'border-gray-200 text-gray-300 cursor-not-allowed' : 'border-gray-200 hover:bg-gray-50'}`}
+            >
+              &lt;
+            </button>
+            {Array.from({ length: Math.min(lastPage, 5) }).map((_, i) => {
+              const pageNum = i + 1;
+              return (
+                <button
+                  key={pageNum}
+                  onClick={() => setCurrentPage(pageNum)}
+                  className={`w-8 h-8 flex items-center justify-center rounded ${currentPage === pageNum ? 'bg-[#0055FF] text-white font-medium' : 'border border-gray-200 hover:bg-gray-50'}`}
+                >
+                  {pageNum}
+                </button>
+              );
+            })}
+            {lastPage > 5 && (
+              <>
+                <span className="w-8 h-8 flex items-center justify-center">...</span>
+                <button
+                  onClick={() => setCurrentPage(lastPage)}
+                  className={`w-8 h-8 flex items-center justify-center rounded border border-gray-200 hover:bg-gray-50`}
+                >
+                  {lastPage}
+                </button>
+              </>
+            )}
+            <button
+              onClick={() => setCurrentPage(p => Math.min(lastPage, p + 1))}
+              disabled={currentPage === lastPage}
+              className={`w-8 h-8 flex items-center justify-center rounded border ${currentPage === lastPage ? 'border-gray-200 text-gray-300 cursor-not-allowed' : 'border-gray-200 hover:bg-gray-50'}`}
+            >
+              &gt;
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ─── ADD / EDIT MODAL ───────────────────────────── */}
       <Dialog open={openAddEdit} onOpenChange={setOpenAddEdit}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -313,62 +440,78 @@ export default function CatalogPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="title">Judul *</Label>
-                <Input id="title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+                <Input
+                  id="title"
+                  value={form.title}
+                  onChange={(e) => setForm({ ...form, title: e.target.value })}
+                  placeholder="Masukkan judul buku"
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="author">Penulis *</Label>
-                <Input id="author" value={form.author} onChange={(e) => setForm({ ...form, author: e.target.value })} />
+                <Input
+                  id="author"
+                  value={form.author}
+                  onChange={(e) => setForm({ ...form, author: e.target.value })}
+                  placeholder="Masukkan nama penulis"
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="isbn">ISBN</Label>
-                <Input id="isbn" value={form.isbn} onChange={(e) => setForm({ ...form, isbn: e.target.value })} />
+                <Input
+                  id="isbn"
+                  value={form.isbn}
+                  onChange={(e) => setForm({ ...form, isbn: e.target.value })}
+                  placeholder="978-xxx-xxx-xxx"
+                />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="category">Kategori</Label>
-                <Select value={form.category} onValueChange={(value) => setForm({ ...form, category: value })}>
+                <Label htmlFor="category">Kategori *</Label>
+                <Select value={form.category_id} onValueChange={(value) => setForm({ ...form, category_id: value })}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Pilih kategori" />
+                    <SelectValue placeholder={isLoadingCategories ? "Memuat kategori..." : "Pilih kategori"} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Fiction">Fiction</SelectItem>
-                    <SelectItem value="Dystopian">Dystopian</SelectItem>
-                    <SelectItem value="Romance">Romance</SelectItem>
-                    <SelectItem value="Adventure">Adventure</SelectItem>
-                    <SelectItem value="Historical">Historical</SelectItem>
-                    <SelectItem value="Drama">Drama</SelectItem>
-                    <SelectItem value="Epic">Epic</SelectItem>
-                    <SelectItem value="Psychological">Psychological</SelectItem>
-                    <SelectItem value="Science Fiction">Science Fiction</SelectItem>
-                    <SelectItem value="Fantasy">Fantasy</SelectItem>
-                    <SelectItem value="Mystery">Mystery</SelectItem>
-                    <SelectItem value="Horror">Horror</SelectItem>
+                    {isLoadingCategories ? (
+                      <SelectItem value="loading" disabled>Memuat...</SelectItem>
+                    ) : categories.length === 0 ? (
+                      <SelectItem value="empty" disabled>Tidak ada kategori</SelectItem>
+                    ) : (
+                      categories.map((cat) => (
+                        <SelectItem key={cat.id} value={String(cat.id)}>{cat.name}</SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="publisher">Penerbit</Label>
-                <Input id="publisher" value={form.publisher} onChange={(e) => setForm({ ...form, publisher: e.target.value })} />
+                <Input
+                  id="publisher"
+                  value={form.publisher}
+                  onChange={(e) => setForm({ ...form, publisher: e.target.value })}
+                  placeholder="Nama penerbit"
+                />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="year">Tahun</Label>
-                <Input id="year" type="number" value={form.year} onChange={(e) => setForm({ ...form, year: Number(e.target.value) })} />
+                <Label htmlFor="year">Tahun Terbit</Label>
+                <Input
+                  id="year"
+                  type="number"
+                  value={form.publication_year}
+                  onChange={(e) => setForm({ ...form, publication_year: Number(e.target.value) })}
+                />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="pages">Halaman</Label>
-                <Input id="pages" type="number" value={form.pages} onChange={(e) => setForm({ ...form, pages: Number(e.target.value) })} />
+                <Label htmlFor="copies">Total Eksemplar</Label>
+                <Input
+                  id="copies"
+                  type="number"
+                  min="1"
+                  value={form.totalCopies}
+                  onChange={(e) => setForm({ ...form, totalCopies: Number(e.target.value) })}
+                />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="language">Bahasa</Label>
-                <Input id="language" value={form.language} onChange={(e) => setForm({ ...form, language: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="copies">Total Copies</Label>
-                <Input id="copies" type="number" min="1" value={form.totalCopies} onChange={(e) => setForm({ ...form, totalCopies: Number(e.target.value) })} />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="description">Deskripsi</Label>
-              <textarea id="description" className="w-full min-h-[100px] px-3 py-2 border rounded-md" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
             </div>
           </div>
           <DialogFooter>
@@ -380,15 +523,22 @@ export default function CatalogPage() {
         </DialogContent>
       </Dialog>
 
+      {/* ─── DELETE MODAL ────────────────────────────────── */}
       <Dialog open={!!deleteBook} onOpenChange={() => setDeleteBook(null)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Konfirmasi Hapus</DialogTitle>
           </DialogHeader>
-          <p className="py-4">Apakah Anda yakin ingin menghapus buku <strong>{deleteBook?.title}</strong>?</p>
+          <p className="py-4">
+            Apakah Anda yakin ingin menghapus buku <strong>{deleteBook?.title}</strong>?
+            <br />
+            <span className="text-xs text-red-500">Tindakan ini tidak dapat dibatalkan.</span>
+          </p>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteBook(null)}>Batal</Button>
-            <Button variant="destructive" onClick={handleDeleteConfirm}>Hapus</Button>
+            <Button variant="destructive" onClick={handleDeleteConfirm} disabled={isDeleting}>
+              {isDeleting ? 'Menghapus...' : 'Hapus'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

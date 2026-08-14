@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+/* eslint-disable react-refresh/only-export-components */
+import { createContext, useContext, useState, type ReactNode } from 'react';
 import apiClient from '@/lib/api/client';
 
 interface User {
@@ -17,52 +18,84 @@ interface AuthContextType {
   isAuthenticated: boolean;
 }
 
+const STORAGE_KEYS = {
+  TOKEN: 'access_token',
+  USER: 'user',
+} as const;
+
+const readStorageValue = (key: string) => {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  try {
+    const value = window.sessionStorage.getItem(key);
+    return value && value !== 'undefined' && value !== 'null' ? value : null;
+  } catch {
+    return null;
+  }
+};
+
+const writeStorageValue = (key: string, value: string) => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    window.sessionStorage.setItem(key, value);
+  } catch {
+    // Ignore storage quota or browser restrictions.
+  }
+};
+
+const removeStorageValue = (key: string) => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    window.sessionStorage.removeItem(key);
+  } catch {
+    // Ignore storage access issues.
+  }
+};
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(() => {
-    const storedToken = localStorage.getItem('access_token');
-    return storedToken && storedToken !== 'undefined' && storedToken !== 'null' ? storedToken : null;
+  const [user, setUser] = useState<User | null>(() => {
+    const storedUser = readStorageValue(STORAGE_KEYS.USER);
+    if (!storedUser) {
+      return null;
+    }
+
+    try {
+      return JSON.parse(storedUser) as User;
+    } catch {
+      removeStorageValue(STORAGE_KEYS.USER);
+      return null;
+    }
   });
 
-  useEffect(() => {
-    if (token) {
-      const storedUser = localStorage.getItem('user');
-      if (storedUser && storedUser !== 'undefined' && storedUser !== 'null') {
-        try {
-          const parsedUser = JSON.parse(storedUser);
-          setUser(parsedUser);
-        } catch (error) {
-          console.error('Failed to parse user:', error);
-          localStorage.removeItem('user');
-          setUser(null);
-        }
-      } else {
-        setUser(null);
-      }
-    } else {
-      setUser(null);
-    }
-  }, [token]);
+  const [token, setToken] = useState<string | null>(() => readStorageValue(STORAGE_KEYS.TOKEN));
 
   const login = (userData: User, accessToken: string) => {
     setUser(userData);
     setToken(accessToken);
-    localStorage.setItem('access_token', accessToken);
-    localStorage.setItem('user', JSON.stringify(userData));
+    writeStorageValue(STORAGE_KEYS.TOKEN, accessToken);
+    writeStorageValue(STORAGE_KEYS.USER, JSON.stringify(userData));
   };
 
   const logout = async () => {
     try {
       await apiClient.post('/logout');
-    } catch (error) {
-      console.error('Logout API error:', error);
+    } catch {
+      // Ignore logout API error
     } finally {
       setUser(null);
       setToken(null);
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('user');
+      removeStorageValue(STORAGE_KEYS.TOKEN);
+      removeStorageValue(STORAGE_KEYS.USER);
     }
   };
 
