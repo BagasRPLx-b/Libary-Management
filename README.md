@@ -1,307 +1,333 @@
-# 📚 Library Management System - Frontend
+# 📚 Sistem Manajemen Perpustakaan - Frontend
 
-> **Status Project:** ✅ Full API Integration, State Management & Production Ready  
-> **Tech Stack:** React 19 + TypeScript 6 + Vite 8 + Tailwind CSS v4 + TanStack Query v5 + React Router v7  
-> **Backend Base URL:** `VITE_API_URL` (Cloudflare Tunnel API v1)
+> **Platform modern untuk mengelola koleksi buku, peminjaman, dan anggota perpustakaan**  
+> Dibangun dengan React 19, TypeScript, dan Vite
 
 ---
 
 ## 📋 Daftar Isi
 
+- [Pengenalan Singkat](#-pengenalan-singkat)
 - [Fitur Utama](#-fitur-utama)
-- [Arsitektur & Struktur Folder](#-arsitektur--struktur-folder)
-- [Teknologi yang Digunakan](#-teknologi-yang-digunakan)
-- [Environment Variables](#-environment-variables)
-- [Cara Menjalankan Project](#-cara-menjalankan-project)
-- [Alur Aplikasi & Sistem Autentikasi](#-alur-aplikasi--sistem-autentikasi)
-- [Aturan Denda & Perhitungan (LMS)](#-aturan-denda--perhitungan-lms)
-- [Integrasi API Endpoint](#-integrasi-api-endpoint)
-- [Checklist Kualitas & Audit](#-checklist-kualitas--audit)
+- [Persyaratan Sistem](#-persyaratan-sistem)
+- [Cara Install & Jalankan](#-cara-install--jalankan)
+- [Panduan Penggunaan Cepat](#-panduan-penggunaan-cepat)
+- [Struktur Folder Project](#-struktur-folder-project)
+- [Troubleshooting](#-troubleshooting)
+
+---
+
+## 🎯 Pengenalan Singkat
+
+**Library Management System** adalah aplikasi web yang dirancang untuk memudahkan pengelolaan perpustakaan modern. Dengan antarmuka yang intuitif dan responsif, aplikasi ini mendukung tiga peran pengguna:
+
+- **👤 Admin**: Kelola semua fitur sistem termasuk data member dan laporan
+- **👥 Staff**: Kelola sirkulasi peminjaman dan pengembalian buku
+- **📖 Member**: Lihat katalog buku, cek profil, dan riwayat peminjaman
 
 ---
 
 ## ✨ Fitur Utama
 
-### 1. Sistem Autentikasi & Role-Based Access
-- **Multi-Role Support:** Admin, Staff, dan Member.
-- **Protected & Role-Based Routing:** 
-  - `ProtectedRoute`: Memastikan hanya user terautentikasi yang dapat mengakses aplikasi.
-  - `RoleRoute`: Menjaga akses khusus Admin/Staff untuk menu manajemen (Circulation, Members, Reports).
-- **JWT Token Management:** Otomatis melampirkan token di setiap HTTP Request melalui Axios Interceptor.
+### 1. 🔐 Sistem Login & Keamanan
+- Login dengan email dan password
+- Daftar akun member baru
+- Proteksi halaman berdasarkan role pengguna
+- Logout otomatis
 
-### 2. Katalog Buku (`/catalog` & `/books/:id`)
-- **Server-State Management:** Data buku, kategori, dan penulis dikelola dengan **TanStack Query**.
-- **Real-time Search & Filter:** Pencarian judul/penulis dilengkapi dengan `useDebounce` hook (400ms) untuk efisiensi request API.
-- **CRUD Buku (Admin/Staff):** Tambah, Edit, dan Hapus buku dengan update otomatis via query invalidation.
-- **Searchable Select & Dynamic Dropdown:** Filter berdasarkan kategori dan penulis yang dinamis.
+### 2. 📚 Katalog Buku
+- Cari dan filter buku berdasarkan judul, pengarang, atau kategori
+- Lihat detail lengkap setiap buku
+- Tambah, edit, dan hapus buku (hanya Admin/Staff)
+- Tampilan responsif di desktop dan mobile
 
-### 3. Sirkulasi & Scanner (`/circulation`)
-- **Mode Issue & Return:** Dukungan penuh peminjaman dan pengembalian buku.
-- **Barcode / ISBN Scanner:** Input scan barcode langsung terintegrasi dengan endpoint `/books/scan/{isbn}`.
-- **Real-time Today Transactions:** Tabel transaksi hari ini otomatis ter-refresh secara asynchronous.
-- **Modal Konfirmasi Denda:** Menampilkan jumlah denda keterlambatan saat pengembalian.
+### 3. 📤📥 Sirkulasi (Peminjaman & Pengembalian)
+- Proses peminjaman buku dengan scan barcode
+- Proses pengembalian dan perhitungan denda otomatis
+- Lihat riwayat transaksi hari ini
+- Modal konfirmasi denda untuk pengembalian terlambat
 
-### 4. Manajemen Member & Profil (`/members` & `/profile`)
-- **Daftar Member (Admin/Staff):** Monitoring status member (Active / Suspended) beserta aksi ubah data dan status.
-- **Profil Member (`/profile`):** Menampilkan ringkasan total pinjaman, denda aktif yang valid dari server state, dan riwayat aktivitas peminjaman.
+### 4. 👥 Manajemen Member
+- Daftar semua member perpustakaan
+- Monitor status member (Aktif/Suspend)
+- Lihat profil pribadi dan riwayat pinjaman
+- Ubah data profil member
 
-### 5. Laporan Overdue (`/reports`)
-- **Monitoring Keterlambatan:** Menampilkan daftar peminjaman yang melewati tanggal jatuh tempo (`due_date`).
-- **Pencarian & Filter Laporan:** Memudahkan Staff/Admin memantau pengembalian buku yang belum dilakukan.
+### 5. 📊 Laporan Overdue
+- Pantau buku yang belum dikembalikan tepat waktu
+- Filter dan cari laporan dengan mudah
+- Export data untuk keperluan administrasi
 
 ---
 
-## 📁 Arsitektur & Struktur Folder
+## 💻 Persyaratan Sistem
 
-Aplikasi ini menggunakan struktur folder **Feature-Based Architecture** yang memisahkan kode berdasarkan modul fitur domain bisnis (`auth`, `books`, `loans`, `members`, `reports`):
+Sebelum mulai, pastikan device Anda memiliki:
 
-```
-library-management-system/
-├── .env.development          # Variable environment development
-├── .env.production           # Variable environment production
-├── .env.example              # Template environment variable
-├── components.json           # Konfigurasi shadcn/ui
-├── eslint.config.js          # Konfigurasi ESLint
-├── index.html
-├── package.json              # Script & Dependencies
-├── tailwind.config.js        # Konfigurasi Tailwind CSS
-├── tsconfig.json             # Root TypeScript config
-├── tsconfig.app.json         # Strict Mode TypeScript config (strict: true)
-├── vite.config.ts            # Vite config (Alias @ -> src, Server Proxy)
-│
-└── src/
-    ├── main.tsx              # Entry Point React app
-    ├── App.tsx               # App Root
-    ├── index.css             # Styling Global (Tailwind v4)
-    │
-    ├── components/           # Reusable Component UI & Layout
-    │   ├── layout/           # App Layouts
-    │   │   ├── AppLayout.tsx        # Layout Switcher (Admin/Staff vs Member)
-    │   │   ├── PublicLayout.tsx     # Public Layout (Login/Register)
-    │   │   ├── PrivateLayout.tsx    # Sidebar + Topbar Layout (Admin/Staff)
-    │   │   ├── MemberLayout.tsx     # Top Navbar Layout (Member)
-    │   │   ├── Navbar.tsx           # Global Header & User Menu
-    │   │   └── Sidebar.tsx          # Navigasi Role-Based
-    │   │
-    │   └── ui/               # Atomic Components (shadcn/ui)
-    │       ├── alert.tsx
-    │       ├── badge.tsx
-    │       ├── button.tsx
-    │       ├── card.tsx
-    │       ├── dialog.tsx
-    │       ├── input.tsx
-    │       ├── select.tsx
-    │       ├── skeleton.tsx
-    │       └── table.tsx
-    │
-    ├── context/
-    │   └── AuthContext.tsx   # React Context Auth (user state & token storage)
-    │
-    ├── features/             # Feature Modules (Feature-Based Architecture)
-    │   ├── auth/
-    │   │   ├── components/   # ProtectedRoute.tsx, RoleRoute.tsx
-    │   │   ├── hooks/        # useAuth.ts (useLogin, useRegister)
-    │   │   └── pages/        # LoginPage.tsx, RegisterPage.tsx
-    │   │
-    │   ├── books/
-    │   │   ├── components/   # BookCardSkeleton.tsx, BookEmptyState.tsx
-    │   │   ├── hooks/        # useBooks.ts (useBooks, useBook, useCreateBook, dll)
-    │   │   └── pages/        # CatalogPage.tsx, BookDetailPage.tsx
-    │   │
-    │   ├── loans/
-    │   │   ├── hooks/        # useCirculation.ts (useTodayTransactions, useIssueBook, useReturnBook)
-    │   │   └── pages/        # CirculationPage.tsx, ActiveLoansPage.tsx
-    │   │
-    │   ├── members/
-    │   │   ├── hooks/        # useMember.ts, useProfile.ts
-    │   │   └── pages/        # MembersPage.tsx, ProfilePage.tsx, MemberLoansPage.tsx
-    │   │
-    │   └── reports/
-    │       ├── hooks/        # useReports.ts (useOverdueLoans)
-    │       └── pages/        # ReportsPage.tsx
-    │
-    ├── hooks/
-    │   └── useDebounce.ts    # Custom hook pencarian ter-debounce (400ms)
-    │
-    ├── lib/
-    │   ├── api/
-    │   │   ├── client.ts     # Axios Instance + Auth Interceptor
-    │   │   ├── books.ts      # API Calls Buku & Kategori
-    │   │   ├── loans.ts      # API Calls Sirkulasi & Transaksi
-    │   │   ├── members.ts    # API Calls Member
-    │   │   └── types.ts      # API Data Transfer Interfaces
-    │   │
-    │   ├── error-handler.ts  # Standardized Error Handler (Axios & Validation)
-    │   ├── formatters.ts     # Currency & Date Formatters (formatRupiah, formatDateString)
-    │   └── utils.ts          # Utility Classmerge (cn)
-    │
-    └── routes/
-        └── index.tsx         # React Router v7 Router Configuration
+- **Node.js** versi 18.x atau lebih baru  
+  [Download di sini](https://nodejs.org/)
+  
+- **npm** versi 9.x atau lebih baru  
+  (Biasanya sudah terinstal bersama Node.js)
+
+- **Web Browser modern** (Chrome, Firefox, Safari, atau Edge)
+
+### Cara Cek Versi
+
+Buka terminal/command prompt dan jalankan:
+
+```bash
+node --version
+npm --version
 ```
 
 ---
 
-## 🛠️ Teknologi yang Digunakan
+## 🚀 Cara Install & Jalankan
 
-| Teknologi | Versi | Peran Dalam Project |
-| :--- | :--- | :--- |
-| **React** | 19.x | Framework UI Komponen |
-| **TypeScript** | 6.x | Type Safety (Mode Strict Aktif) |
-| **Vite** | 8.x | Build Tooling & Development Server Fast HMR |
-| **TanStack Query** | 5.x | Server-State Management, Caching, & Mutations |
-| **React Router** | 7.x | Routing Client-Side & Nested Role Guards |
-| **Tailwind CSS** | 4.x | Styling Utility-First |
-| **Axios** | 1.x | HTTP Client dengan Interceptor Token |
-| **date-fns** | 4.x | Format Tanggal & Bahasa Indonesia Locale |
-| **Lucide React** | 1.x | Icon Library Modern |
+### Langkah 1: Clone Repository
 
----
+```bash
+git clone https://github.com/BagasRPLx-b/Libary-Management.git
+cd Libary-Management
+```
 
-## ⚙️ Environment Variables
+### Langkah 2: Install Dependencies
 
-Aplikasi menggunakan environment variable yang didefinisikan dalam `.env.development` dan `.env.production`.
+```bash
+npm install
+```
 
-Contoh file `.env.example`:
+Tunggu proses instalasi selesai (biasanya 2-5 menit tergantung kecepatan internet).
+
+### Langkah 3: Konfigurasi Environment (Opsional)
+
+Buat file `.env.development` di folder root project:
+
+```bash
+cp .env.example .env.development
+```
+
+Buka `.env.development` dengan text editor dan pastikan berisi:
+
 ```env
-# URL Base Endpoint API Backend
 VITE_API_URL=https://barrier-generation-queensland-session.trycloudflare.com/api/v1
 ```
 
-> **Catatan:** `apiClient` di `src/lib/api/client.ts` secara otomatis membaca `import.meta.env.VITE_API_URL`.
+> **Catatan:** Jika API URL berbeda, sesuaikan dengan URL backend Anda.
 
----
-
-## 🚀 Cara Menjalankan Project
-
-### Prasyarat
-- **Node.js** >= 18.x
-- **npm** >= 9.x
-
-### Langkah-langkah
+### Langkah 4: Jalankan Aplikasi
 
 ```bash
-# 1. Clone repository
-git clone https://github.com/your-username/library-management-system.git
-cd library-management-system
-
-# 2. Install dependencies
-npm install
-
-# 3. Buat file .env.development (opsional, ikuti template .env.example)
-cp .env.example .env.development
-
-# 4. Menjalankan server development
 npm run dev
+```
 
-# 5. Buka di browser
+Tunggu hingga muncul pesan seperti:
+
+```
+  Local:        http://localhost:5173/
+  press h to show help
+```
+
+### Langkah 5: Buka di Browser
+
+Buka browser Anda dan ketik:
+
+```
 http://localhost:5173
 ```
 
-### Perintah Pembangunan & Kualitas
+**Selamat! Aplikasi sudah berjalan.** 🎉
+
+---
+
+## 📖 Panduan Penggunaan Cepat
+
+### 🔑 Login Pertama Kali
+
+1. Buka halaman login
+2. Pilih antara **Login** atau **Daftar** (untuk member baru)
+3. Masukkan email dan password Anda
+4. Klik tombol **Login**
+5. Anda akan dialihkan ke dashboard sesuai role Anda
+
+### 📚 Melihat Katalog Buku
+
+1. Klik menu **Katalog** di sidebar
+2. Gunakan kolom pencarian untuk cari buku
+3. Filter berdasarkan kategori atau pengarang
+4. Klik judul buku untuk melihat detail lengkap
+
+### 📥 Meminjam Buku (untuk Admin/Staff)
+
+1. Buka menu **Sirkulasi**
+2. Pilih mode **Peminjaman**
+3. Masukkan data member (email atau ID)
+4. Scan barcode buku atau masukkan ISBN
+5. Klik **Konfirmasi Peminjaman**
+
+### 📤 Mengembalikan Buku (untuk Admin/Staff)
+
+1. Buka menu **Sirkulasi**
+2. Pilih mode **Pengembalian**
+3. Scan barcode buku yang dikembalikan
+4. Sistem otomatis menghitung denda (jika ada)
+5. Klik **Konfirmasi Pengembalian**
+
+### 👤 Lihat Profil & Riwayat Pinjaman
+
+1. Klik foto profil di sudut kanan atas
+2. Pilih **Profil**
+3. Lihat data pribadi, total pinjaman, dan riwayat pinjaman
+
+---
+
+## 📁 Struktur Folder Project
+
+Untuk referensi, berikut struktur project:
+
+```
+Libary-Management/
+├── src/
+│   ├── features/              # Modul fitur utama
+│   │   ├── auth/             # Login & Register
+│   │   ├── books/            # Katalog Buku
+│   │   ├── loans/            # Sirkulasi Peminjaman
+│   │   ├── members/          # Data Member
+│   │   └── reports/          # Laporan Overdue
+│   │
+│   ├── components/            # Komponen UI yang dapat digunakan kembali
+│   │   ├── layout/           # Layout halaman
+│   │   └── ui/               # Komponen UI dasar
+│   │
+│   ├── lib/                   # Fungsi & utilitas
+│   │   ├── api/              # Integrasi API backend
+│   │   └── formatters.ts     # Format tanggal & mata uang
+│   │
+│   ├── App.tsx               # Aplikasi utama
+│   └── main.tsx              # Entry point
+│
+├── .env.example              # Template konfigurasi
+├── package.json              # Daftar dependencies
+├── vite.config.ts            # Konfigurasi Vite
+└── README.md                 # File ini
+```
+
+---
+
+## ⚙️ Perintah Useful
+
+Saat mengembangkan project, berikut perintah yang sering digunakan:
 
 ```bash
-# Jalankan pembuktian type-check TypeScript + build bundler production
+# Jalankan dalam mode development (dengan hot reload)
+npm run dev
+
+# Buat build production (hasil file static)
 npm run build
 
-# Menjalankan linter ESLint
-npm run lint
-
-# Menjalankan preview build hasil bundler production
+# Preview build production di local
 npm run preview
+
+# Jalankan linter untuk cek kualitas kode
+npm run lint
 ```
 
 ---
 
-## 🔄 Alur Aplikasi & Sistem Autentikasi
+## 🔧 Teknologi yang Digunakan
 
-### Alur Alur Autentikasi User (Flowchart)
-```
-[ User Input Email/Password ]
-             │
-             ▼
-      [ POST /login ]
-             │
-   ┌─────────┴─────────┐
-   ▼                   ▼
- (Gagal)           (Sukses)
-   │                   │
-[Pesan Error]   [Simpan access_token & User Data ke localStorage]
-                       │
-                       ▼
-            [ AuthContext Updated ]
-                       │
-                       ▼
-      [ Navigate -> /catalog atau /circulation ]
+| Nama | Versi | Kegunaan |
+|------|-------|---------|
+| React | 19.x | Framework UI |
+| TypeScript | 6.x | Type safety & kualitas kode |
+| Vite | 8.x | Build tool & dev server cepat |
+| Tailwind CSS | 4.x | Styling & desain responsif |
+| TanStack Query | 5.x | Manajemen data server |
+| React Router | 7.x | Navigasi antar halaman |
+| Axios | 1.x | HTTP client untuk API |
+| date-fns | 4.x | Format tanggal & waktu |
+
+---
+
+## ❓ Troubleshooting
+
+### Masalah: Port 5173 sudah digunakan
+
+**Solusi:**  
+Jalankan dengan port berbeda:
+```bash
+npm run dev -- --port 3000
 ```
 
-### Alur Guard Otorisasi Role (Routing)
+### Masalah: Halaman kosong atau error saat load
+
+**Solusi:**
+1. Bersihkan cache browser (Ctrl+Shift+Delete)
+2. Refresh halaman (Ctrl+F5)
+3. Pastikan API URL di `.env.development` benar
+
+### Masalah: Tidak bisa login atau error API
+
+**Solusi:**
+1. Pastikan backend API sedang berjalan
+2. Periksa URL API di `.env.development` benar sesuai dengan yang ditentukan
+3. Buka DevTools (F12) → Console untuk melihat error detail
+4. Hubungi admin jika masalah terus berlanjut
+
+### Masalah: npm install gagal atau lambat
+
+**Solusi:**
+```bash
+# Bersihkan cache npm
+npm cache clean --force
+
+# Install ulang
+npm install
 ```
-                  [ URL Requested ]
-                          │
-                          ▼
-                 [ ProtectedRoute ]
-                  /               \
-         (Is Authenticated?)   (Not Authenticated)
-                /                     \
-             [YES]                  [Redirect /login]
-              /
-             ▼
-        [ RoleRoute ]
-       /             \
-(Role Permitted?)  (Role Denied)
-     /                 \
-  [YES]               [Redirect /catalog]
-   /
-  ▼
-[ Render Target Page ]
+
+### Masalah: TypeScript error saat build
+
+**Solusi:**
+```bash
+# Jalankan type check
+npm run build
+
+# Jika ada error, baca pesan error dan perbaiki
 ```
 
 ---
 
-## 💰 Aturan Denda & Perhitungan (LMS)
+## 📞 Butuh Bantuan?
 
-Aplikasi LMS ini mengikuti aturan bisnis perhitungan denda yang tepat:
+Jika mengalami masalah atau punya pertanyaan:
 
-1. **Denda Final dari Backend API:**  
-   Nilai denda final yang valid **diambil dari field `fine_amount` pada API response** saat transaksi statusnya sudah `'returned'`.
-2. **Estimasi Denda (`estimated_fine`):**  
-   Field `estimated_fine` pada data pinjaman overdue hanya dijadikan estimasi sementara dan **tidak dihitung/diakumulasikan sebagai denda terutang resmi** sebelum pengembalian diproses oleh backend.
-3. **Format Mata Uang:**  
-   Menggunakan formatter terpusat `formatRupiah()` (`Rp X.XXX`) di `src/lib/formatters.ts`.
+1. **Lihat error di Console**  
+   Buka DevTools (tekan F12), tab **Console** untuk melihat pesan error detail
 
----
+2. **Cek dokumentasi project**  
+   Lihat file dokumentasi di folder `docs/` (jika ada)
 
-## 📡 Integrasi API Endpoint
-
-| Method | Endpoint | Fungsi | Akses Role |
-| :--- | :--- | :--- | :--- |
-| `POST` | `/login` | Autentikasi pengguna & pengambilan JWT Token | Public |
-| `POST` | `/register` | Pendaftaran akun member baru | Public |
-| `GET` | `/books` | Mengambil data katalog buku (support query params: `search`, `author`, `category_id`, `page`) | All Roles |
-| `GET` | `/books/scan/{isbn}` | Mencari detail buku berdasarkan scan barcode ISBN | Admin, Staff |
-| `POST` | `/books` | Menambahkan buku baru | Admin, Staff |
-| `PUT` | `/books/{id}` | Memperbarui data buku | Admin, Staff |
-| `DELETE` | `/books/{id}` | Menghapus data buku | Admin, Staff |
-| `POST` | `/loans/issue` | Memproses peminjaman buku ke anggota | Admin, Staff |
-| `POST` | `/loans/{id}/return` | Memproses pengembalian buku & menghitung denda | Admin, Staff |
-| `GET` | `/transactions` | Mengambil transaksi sirkulasi hari ini | Admin, Staff |
-| `GET` | `/members` | Daftar seluruh anggota perpustakaan | Admin, Staff |
-| `GET` | `/profile` | Memuat data profil & riwayat pinjaman pengguna yang login | All Roles |
-| `GET` | `/reports/overdue` | Laporan data peminjaman terlambat | Admin, Staff |
+3. **Hubungi developer**  
+   Buat issue di GitHub: https://github.com/BagasRPLx-b/Libary-Management/issues
 
 ---
 
-## 🔍 Checklist Kualitas & Audit
+## 📝 Catatan Penting
 
-- [x] **Arsitektur Feature-Based:** Terpisah jelas antara modul `auth`, `books`, `loans`, `members`, `reports`.
-- [x] **State Management:** Penggunaan **TanStack Query** untuk server state caching dan mutasi data.
-- [x] **Pencarian Ter-debounce:** Memakai `useDebounce` hook untuk mencegah spam request API.
-- [x] **Clean Imports:** Seluruh import menggunakan path alias `@/`.
-- [x] **Error Handling:** Terstandarisasi dengan `getErrorMessage()` dan penanganan error Axios HTTP status.
-- [x] **Loading & Empty State:** Tersedia komponen Skeleton dan Empty State di seluruh modul.
-- [x] **TypeScript Strict:** Mode `"strict": true` aktif di `tsconfig.app.json` dan bebas error kompilasi.
-- [x] **Environment Variable:** Konfigurasi API terhubung dengan `.env.development` & `.env.example`.
+- **Simpan kredensial dengan aman** - Jangan bagikan password atau token Anda
+- **Backup data regularly** - Pastikan data penting selalu di-backup
+- **Update dependencies** - Jalankan `npm install` untuk update package terbaru
+- **Gunakan HTTPS di production** - Jangan gunakan HTTP untuk data sensitif
 
 ---
 
-> Dibuat dengan ❤️ untuk **Library Management System Frontend**
+## 📄 Lisensi
+
+Project ini dibuat untuk keperluan manajemen perpustakaan.
+
+---
+
+**Dibuat dengan ❤️ untuk Sistem Manajemen Perpustakaan Modern**
+
+> Terakhir diperbarui: Agustus 2026
