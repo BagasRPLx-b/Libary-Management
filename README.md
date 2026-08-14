@@ -261,13 +261,13 @@ npm run dev -- --port 3000
 **Solusi:**
 1. Bersihkan cache browser (Ctrl+Shift+Delete)
 2. Refresh halaman (Ctrl+F5)
-3. Pastikan API URL di `.env.development` benar
+3. Pastikan API URL di `.env` benar
 
 ### Masalah: Tidak bisa login atau error API
 
 **Solusi:**
 1. Pastikan backend API sedang berjalan
-2. Periksa URL API di `.env.development` benar sesuai dengan yang ditentukan
+2. Periksa URL API di `.env` benar sesuai dengan yang ditentukan
 3. Buka DevTools (F12) → Console untuk melihat error detail
 4. Hubungi admin jika masalah terus berlanjut
 
